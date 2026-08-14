@@ -1,0 +1,36 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - API_KEY=${API_KEY:-dev-key-change-me-before-use}
+      - STORAGE_BACKEND=local
+      - DATABASE_URL=sqlite:////app/data/auditor.db
+      - STORAGE_PATH=/app/data/uploads
+      - LLM_ENABLED=${LLM_ENABLED:-false}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+# Uncomment to add a simple nginx reverse proxy for local TLS testing:
+# proxy:
+#   image: nginx:alpine
+#   ports:
+#     - "443:443"
+#   volumes:
+#     - ./nginx.conf:/etc/nginx/nginx.conf:ro
+#     - ./certs:/etc/nginx/certs:ro
+#   depends_on:
+#     - api

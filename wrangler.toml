@@ -1,0 +1,43 @@
+name = "ai-cost-auditor"
+main = "worker/src/index.ts"
+compatibility_date = "2026-08-14"
+compatibility_flags = ["nodejs_compat"]
+
+# Container — builds from local Dockerfile
+[[containers]]
+class_name = "AuditorContainer"
+image = "./Dockerfile"
+max_instances = 3
+
+# Container bound via Durable Objects
+[durable_objects]
+bindings = [
+  { name = "AUDITOR_CONTAINER", class_name = "AuditorContainer" }
+]
+
+# Required migration for Durable Object
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["AuditorContainer"]
+
+# D1 SQLite database for audit metadata
+# Create with: npx wrangler d1 create ai-cost-auditor-db
+# Then paste the database_id below
+[[d1_databases]]
+binding = "DB"
+database_name = "ai-cost-auditor-db"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+
+# R2 for file storage (uploaded datasets, generated reports)
+# Create with: npx wrangler r2 bucket create ai-cost-auditor
+[[r2_buckets]]
+binding = "AUDIT_STORAGE"
+bucket_name = "ai-cost-auditor"
+
+# Non-sensitive configuration
+[vars]
+APP_ENV = "production"
+
+# Secrets (set with: npx wrangler secret put <NAME>)
+# API_KEY — required, used for authentication
+# The Container receives env vars via the AuditorContainer class envVars definition

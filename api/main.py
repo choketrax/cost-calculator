@@ -1,0 +1,129 @@
+"""
+AI Cost Auditor — FastAPI Application
+Full implementation with storage integration, business logic, and all endpoints.
+"""
+from __future__ import annotations
+
+import logging
+import os
+from contextlib import asynccontextmanager
+from pathlib import Path
+
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+
+from .config import get_settings
+from .routes import audits, findings, scenarios, simulations, pricing_routes
+
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Initialize storage, pricing registry, and other shared resources on startup."""
+    settings = get_settings()
+    logger.setLevel(getattr(logging, settings.log_level.upper(), logging.INFO))
+
+    # Initialize storage
+    from storage.factory import create_storage
+    repo, file_storage = await create_storage(settings)
+
+    # Initialize pricing registry
+    from core.pricing.registry import PricingRegistry
+    pricing_data_path = Path(__file__).parent.parent / "core" / "pricing" / "data" / "pricing_v1.json"
+    registry = PricingRegistry(pricing_data_path)
+    registry.load()
+
+    # Store on app.state for access in routes
+    app.state.settings = settings
+    app.state.repo = repo
+    app.state.file_storage = file_storage
+    app.state.pricing_registry = registry
+
+    logger.info(f"AI Cost Auditor v{settings.app_version} started (backend: {settings.storage_backend})")
+    logger.info(f"Pricing registry loaded: {len(registry.list_entries())} active entries")
+
+    yield
+
+    logger.info("AI Cost Auditor shutting down")
+
+
+app = FastAPI(
+    title="AI Cost Auditor",
+    description="Reproducible AI savings decision engine",
+    version="0.1.0",
+    docs_url="/api/v1/docs",
+    redoc_url="/api/v1/redoc",
+    openapi_url="/api/v1/openapi.json",
+    lifespan=lifespan,
+)
+
+
+# ---------------------------------------------------------------------------
+# Middleware
+# ---------------------------------------------------------------------------
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """Log request path and method only. Never log body content."""
+    logger.info(f"[{request.method}] {request.url.path}")
+    response = await call_next(request)
+    logger.info(f"→ {response.status_code}")
+    return response
+
+
+# ---------------------------------------------------------------------------
+# Exception handlers
+# ---------------------------------------------------------------------------
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    return JSONResponse(
+        status_code=422,
+        content={
+            "status": "error",
+            "error": {
+                "code": "VALIDATION_ERROR",
+                "message": "Request validation failed",
+                "details": exc.errors(),
+            },
+        },
+    )
+
+
+# ---------------------------------------------------------------------------
+# Public endpoints (no auth)
+# ---------------------------------------------------------------------------
+
+@app.get("/api/v1/health", tags=["system"])
+async def health_check(request: Request):
+    settings = request.app.state.settings
+    return {
+        "status": "ok",
+        "version": settings.app_version,
+        "storage_backend": settings.storage_backend,
+    }
+
+
+@app.get("/api/v1/version", tags=["system"])
+async def version_info():
+    from core.prng.rng import NUMPY_VERSION, PRNG_ALGORITHM, PRNG_VERSION
+    import numpy as np
+    return {
+        "version": "0.1.0",
+        "prng_algorithm": PRNG_ALGORITHM,
+        "prng_version": PRNG_VERSION,
+        "numpy_version": NUMPY_VERSION,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Authenticated routes
+# ---------------------------------------------------------------------------
+
+app.include_router(audits.router, prefix="/api/v1")
+app.include_router(findings.router, prefix="/api/v1")
+app.include_router(scenarios.router, prefix="/api/v1")
+app.include_router(simulations.router, prefix="/api/v1")
+app.include_router(pricing_routes.router, prefix="/api/v1")
