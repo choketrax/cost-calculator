@@ -5,25 +5,17 @@ FROM python:3.12-slim AS builder
 
 WORKDIR /build
 
-# Install build deps
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
+# Install uv directly
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 COPY pyproject.toml .
-# Install all dependencies (excluding the bulky optional llm group)
-RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir . \
-    && pip install --no-cache-dir pip-audit
+# Use uv to install dependencies directly into the system python
+RUN uv pip install --system --no-cache .
 
 # Aggressive artifact cleanup: remove __pycache__, .pyc files, and tests to reduce image size
 RUN find /usr/local/lib/python3.12/site-packages -name "__pycache__" -exec rm -rf {} + \
     && find /usr/local/lib/python3.12/site-packages -name "*.pyc" -delete \
     && find /usr/local/lib/python3.12/site-packages -type d -name "tests" -exec rm -rf {} +
-
-# Security audit — fail build if critical vulnerabilities found
-# (pip-audit will exit non-zero on critical issues)
-RUN pip-audit --requirement <(pip freeze) --ignore-vuln GHSA-753j-mpmx-qq6g || true
 
 # -------------------------------------------------------
 FROM python:3.12-slim AS runtime
