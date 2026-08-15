@@ -22,7 +22,11 @@ dependencies = [
     "jinja2>=3.1.0",
     "python-dateutil>=2.9.0",
     "orjson>=3.10.0",
+    "mcp>=1.2.0",
 ]
+
+[project.scripts]
+ai-cost-auditor-mcp = "core.mcp_server:main"
 
 [project.optional-dependencies]
 llm = [
