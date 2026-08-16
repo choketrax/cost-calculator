@@ -95,6 +95,20 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         },
     )
 
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Unhandled exception: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "status": "error",
+            "error": {
+                "code": "INTERNAL_SERVER_ERROR",
+                "message": str(exc),
+                "type": type(exc).__name__,
+            },
+        },
+    )
 
 # ---------------------------------------------------------------------------
 # Public endpoints (no auth)
