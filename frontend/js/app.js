@@ -310,8 +310,14 @@ function openAuditDetails(auditId) {
   // Deselect nav items
   navItems.forEach(item => item.classList.remove("active"));
   
-  viewSections.forEach(section => section.classList.add("hidden"));
-  document.getElementById("view-audit-details").classList.remove("hidden");
+  viewSections.forEach(section => {
+    section.classList.remove("active");
+    section.classList.add("hidden");
+  });
+  const detailsView = document.getElementById("view-audit-details");
+  detailsView.classList.remove("hidden");
+  detailsView.classList.add("active");
+  
   viewTitle.textContent = "Audit Details";
   
   loadAuditDetails(auditId);
