@@ -30,6 +30,10 @@ class CostCalculator:
         pricing = self.registry.get_price(record.provider, record.model, as_of=p_date)
         
         if not pricing:
+            # Fall back to the most recent available pricing (handles pre-launch test data)
+            pricing = self.registry.get_price(record.provider, record.model, as_of=None)
+        
+        if not pricing:
             return Decimal('0')
             
         m = Decimal('1000000')
