@@ -164,7 +164,7 @@ async function checkConnection() {
 // Load Dashboard
 async function loadDashboard() {
   try {
-    const data = await apiFetch("/audits/?limit=5");
+    const data = await apiFetch("/audits?limit=5");
     
     const tbody = document.getElementById("recent-audits-body");
     tbody.innerHTML = "";
@@ -204,7 +204,7 @@ async function loadDashboard() {
 // Load Pricing
 async function loadPricing() {
   try {
-    const data = await apiFetch("/pricing/");
+    const data = await apiFetch("/pricing");
     const tbody = document.getElementById("pricing-body");
     tbody.innerHTML = "";
 
@@ -230,7 +230,7 @@ async function loadPricing() {
 // Load Audits
 async function loadAudits() {
   try {
-    const data = await apiFetch("/audits/?limit=50");
+    const data = await apiFetch("/audits?limit=50");
     const tbody = document.getElementById("all-audits-body");
     tbody.innerHTML = "";
 
@@ -378,7 +378,7 @@ async function handleUploadSubmit(e) {
 // Setup Simulations
 async function loadSimulationsSetup() {
   try {
-    const data = await apiFetch("/audits/?limit=50");
+    const data = await apiFetch("/audits?limit=50");
     simAuditSelect.innerHTML = '<option value="">Select an audit...</option>';
     
     if (data.data && data.data.length > 0) {
