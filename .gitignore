@@ -45,3 +45,7 @@ worker/dist/
 
 # Docker
 *.log
+
+# Cloudflare
+.wrangler/
+node_modules/

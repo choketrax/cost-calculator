@@ -30,21 +30,33 @@ export class AuditorContainer extends Container {
   defaultPort = 8000;
   sleepAfter = "30m"; // Scale-to-zero after 30 minutes of inactivity
   
-
-
+  // Inject environment variables into the Python container
+  envVars = {
+    STORAGE_BACKEND: "cloudflare",
+    APP_ENV: "production",
+    API_KEY: "container-internal"
+  };
   // Outbound handler: intercepts HTTP calls from Python container to Cloudflare services
   static outboundByHost: Record<
     string,
     (request: Request, env: Env) => Promise<Response>
   > = {
-    // D1 handler: Python calls POST http://my.d1/query with {query, params}
+    // D1 handler: Python calls POST http://my.d1/query with {query, params} or {batch: [{query, params}, ...]}
     "my.d1": async (request: Request, env: Env): Promise<Response> => {
       try {
-        const body = await request.json() as { query: string; params?: unknown[] };
-        const { query, params = [] } = body;
-        const stmt = env.DB.prepare(query);
-        const result = await stmt.bind(...params).all();
-        return Response.json({ success: true, results: result.results, meta: result.meta });
+        const body = await request.json() as { query?: string; params?: unknown[]; batch?: {query: string, params?: unknown[]}[] };
+        
+        if (body.batch) {
+          const statements = body.batch.map(b => env.DB.prepare(b.query).bind(...(b.params || [])));
+          const results = await env.DB.batch(statements);
+          return Response.json({ success: true, results: results.map(r => r.results) });
+        } else if (body.query) {
+          const { query, params = [] } = body;
+          const stmt = env.DB.prepare(query);
+          const result = await stmt.bind(...params).all();
+          return Response.json({ success: true, results: result.results, meta: result.meta });
+        }
+        return Response.json({ success: false, error: "Missing query or batch" }, { status: 400 });
       } catch (err) {
         const message = err instanceof Error ? err.message : "D1 query failed";
         return Response.json({ success: false, error: message }, { status: 500 });
@@ -112,13 +124,38 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
 
-    // Health check and version endpoints bypass auth
+    const corsHeaders = {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, X-API-Key",
+      "Access-Control-Max-Age": "86400",
+    };
+
+    // Handle CORS preflight
+    if (request.method === "OPTIONS") {
+      return new Response(null, { headers: corsHeaders });
+    }
+
+    // Redirect root to API docs
+    if (url.pathname === "/") {
+      return Response.redirect(`${url.origin}/api/v1/docs`, 302);
+    }
+
+    // Health check, version, and docs bypass auth
     if (
       url.pathname === "/api/v1/health" ||
-      url.pathname === "/api/v1/version"
+      url.pathname === "/api/v1/version" ||
+      url.pathname === "/api/v1/docs" ||
+      url.pathname === "/api/v1/redoc" ||
+      url.pathname === "/api/v1/openapi.json"
     ) {
-      const container = getContainer(env.AUDITOR_CONTAINER, "default");
-      return container.fetch(request);
+      const container = getContainer(env.AUDITOR_CONTAINER, "production-v1");
+      const response = await container.fetch(request);
+      const newResponse = new Response(response.body, response);
+      for (const [key, value] of Object.entries(corsHeaders)) {
+        newResponse.headers.set(key, value);
+      }
+      return newResponse;
     }
 
     // All other endpoints require API key
@@ -134,6 +171,7 @@ export default {
           headers: {
             "Content-Type": "application/json",
             "WWW-Authenticate": "ApiKey",
+            ...corsHeaders
           },
         }
       );
@@ -147,7 +185,7 @@ export default {
           status: "error",
           error: { code: "PAYLOAD_TOO_LARGE", message: "Request exceeds 50MB limit" },
         }),
-        { status: 413, headers: { "Content-Type": "application/json" } }
+        { status: 413, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
@@ -155,7 +193,14 @@ export default {
     console.log(`[${request.method}] ${url.pathname}`);
 
     // Proxy authenticated request to container
-    const container = getContainer(env.AUDITOR_CONTAINER, "default");
-    return container.fetch(request);
+    const container = getContainer(env.AUDITOR_CONTAINER, "production-v1");
+    const response = await container.fetch(request);
+    
+    // Inject CORS headers into the response
+    const newResponse = new Response(response.body, response);
+    for (const [key, value] of Object.entries(corsHeaders)) {
+      newResponse.headers.set(key, value);
+    }
+    return newResponse;
   },
 };

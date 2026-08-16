@@ -37,6 +37,7 @@ bucket_name = "ai-cost-auditor"
 # Non-sensitive configuration
 [vars]
 APP_ENV = "production"
+API_KEY = "container-internal"
 
 # Secrets (set with: npx wrangler secret put <NAME>)
 # API_KEY — required, used for authentication

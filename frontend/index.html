@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Cost Auditor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <!-- Settings Modal -->
+  <div id="settings-modal" class="modal hidden">
+    <div class="modal-content glass-panel">
+      <h2>Configuration</h2>
+      <p>Please enter your API Key to access the backend.</p>
+      <div class="input-group">
+        <label for="api-key-input">API Key</label>
+        <input type="password" id="api-key-input" placeholder="Enter API Key">
+      </div>
+      <button id="save-settings-btn" class="btn primary">Save & Connect</button>
+    </div>
+  </div>
+
+  <!-- Upload Audit Modal -->
+  <div id="upload-modal" class="modal hidden">
+    <div class="modal-content glass-panel">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h2 style="margin: 0;">Upload Usage Data</h2>
+        <button id="close-upload-btn" style="background: none; border: none; color: white; cursor: pointer; font-size: 1.2rem;">&times;</button>
+      </div>
+      <form id="upload-form">
+        <div class="input-group">
+          <label for="upload-customer">Project / Customer Name</label>
+          <input type="text" id="upload-customer" required placeholder="e.g. Acme Corp">
+        </div>
+        <div class="input-group">
+          <label for="upload-app">Application</label>
+          <input type="text" id="upload-app" required placeholder="e.g. Chatbot">
+        </div>
+        <div class="input-group">
+          <label for="upload-workload">Workload</label>
+          <input type="text" id="upload-workload" required placeholder="e.g. Production">
+        </div>
+        <div class="input-group">
+          <label for="upload-file">Usage Data (CSV or JSON)</label>
+          <input type="file" id="upload-file" accept=".csv,.json" required>
+        </div>
+        <div id="upload-status" style="margin-bottom: 16px; font-size: 0.9rem; color: var(--accent-color);"></div>
+        <button type="submit" id="submit-upload-btn" class="btn primary" style="width: 100%;">Upload & Ingest</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="app-container">
+    <!-- Sidebar -->
+    <aside class="sidebar glass-panel">
+      <div class="logo">
+        <div class="logo-icon"></div>
+        <h1>AI Cost Auditor</h1>
+      </div>
+      <nav class="nav-menu">
+        <button class="nav-item active" data-view="dashboard">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+          Dashboard
+        </button>
+        <button class="nav-item" data-view="audits">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+          Audits
+        </button>
+        <button class="nav-item" data-view="simulations">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+          Simulations
+        </button>
+        <button class="nav-item" data-view="pricing">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+          Pricing
+        </button>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <button id="open-settings-btn" class="nav-item">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+          Settings
+        </button>
+        <div id="connection-status" class="status-indicator">
+          <span class="dot disconnected"></span>
+          <span class="status-text">Disconnected</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <header class="topbar">
+        <h2 id="current-view-title">Dashboard</h2>
+        <div class="user-actions">
+          <button class="btn secondary" onclick="window.open('https://ai-cost-auditorv2.dl-56e.workers.dev/api/v1/docs', '_blank')">API Docs</button>
+        </div>
+      </header>
+
+      <div class="content-area">
+        
+        <!-- Dashboard View -->
+        <section id="view-dashboard" class="view-section active">
+          <div class="stats-grid">
+            <div class="stat-card glass-panel">
+              <h3>Total Cost</h3>
+              <div class="stat-value" id="dash-total-cost">$0.00</div>
+              <div class="stat-change positive">--</div>
+            </div>
+            <div class="stat-card glass-panel">
+              <h3>Total Requests</h3>
+              <div class="stat-value" id="dash-total-requests">0</div>
+            </div>
+            <div class="stat-card glass-panel">
+              <h3>Tokens Processed</h3>
+              <div class="stat-value" id="dash-total-tokens">0 M</div>
+            </div>
+            <div class="stat-card glass-panel highlight">
+              <h3>Potential Savings</h3>
+              <div class="stat-value" id="dash-savings">$0.00</div>
+              <div class="stat-subtitle">Based on latest simulations</div>
+            </div>
+          </div>
+
+          <div class="chart-container glass-panel">
+            <h3>Recent Audits</h3>
+            <div class="table-responsive">
+              <table id="recent-audits-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Application</th>
+                    <th>Workload</th>
+                    <th>Requests</th>
+                    <th>Cost</th>
+                  </tr>
+                </thead>
+                <tbody id="recent-audits-body">
+                  <tr><td colspan="5" class="text-center">Loading audits...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- Audits View -->
+        <section id="view-audits" class="view-section hidden">
+          <div class="card glass-panel">
+            <div class="card-header">
+              <h3>All Audits</h3>
+              <button class="btn primary" id="btn-new-audit">New Audit</button>
+            </div>
+            <div class="table-responsive">
+              <table id="all-audits-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Application</th>
+                    <th>Workload</th>
+                    <th>Records</th>
+                    <th>Total Cost</th>
+                  </tr>
+                </thead>
+                <tbody id="all-audits-body">
+                  <tr><td colspan="5" class="text-center">Loading...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- Simulations View -->
+        <section id="view-simulations" class="view-section hidden">
+          <div class="card glass-panel">
+            <div class="card-header">
+              <h3>Run Monte Carlo Simulation</h3>
+            </div>
+            <div class="card-body">
+              <form id="simulation-form" class="form-grid">
+                <div class="input-group">
+                  <label for="sim-audit-id">Target Audit</label>
+                  <select id="sim-audit-id" required>
+                    <option value="">Select an audit...</option>
+                  </select>
+                </div>
+                <div class="input-group">
+                  <label for="sim-savings-target">Monthly Savings Target ($)</label>
+                  <input type="number" id="sim-savings-target" value="1000" min="0" step="100" required>
+                </div>
+                <div class="input-group">
+                  <label for="sim-iterations">Iterations</label>
+                  <input type="number" id="sim-iterations" value="1000" min="100" max="10000" step="100" required>
+                </div>
+                <div class="input-group">
+                  <label>&nbsp;</label>
+                  <button type="submit" id="submit-sim-btn" class="btn primary">Run Simulation</button>
+                </div>
+              </form>
+              <div id="sim-status" style="margin-top: 16px; font-size: 0.9rem; color: var(--accent-color);"></div>
+            </div>
+          </div>
+          
+          <div class="card glass-panel mt-4">
+            <div class="card-header">
+              <h3>Simulation Results</h3>
+            </div>
+            <div class="table-responsive">
+              <table id="simulations-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Audit</th>
+                    <th>Scenario</th>
+                    <th>Status</th>
+                    <th>Original Cost</th>
+                    <th>Simulated Cost</th>
+                    <th>Savings</th>
+                  </tr>
+                </thead>
+                <tbody id="simulations-body">
+                  <tr><td colspan="7" class="text-center">No simulations run yet.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- Pricing View -->
+        <section id="view-pricing" class="view-section hidden">
+          <div class="card glass-panel">
+            <div class="card-header">
+              <h3>Pricing Registry</h3>
+            </div>
+            <div class="table-responsive">
+              <table id="pricing-table">
+                <thead>
+                  <tr>
+                    <th>Provider</th>
+                    <th>Model</th>
+                    <th>Input ($/1M)</th>
+                    <th>Output ($/1M)</th>
+                    <th>Cached ($/1M)</th>
+                    <th>Source</th>
+                  </tr>
+                </thead>
+                <tbody id="pricing-body">
+                  <tr><td colspan="6" class="text-center">Loading pricing data...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

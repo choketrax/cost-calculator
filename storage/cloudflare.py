@@ -17,7 +17,8 @@ class CloudflareRepository(AuditRepository):
                 json={"query": query, "params": params or []},
                 timeout=30.0,
             )
-            resp.raise_for_status()
+            if not resp.is_success:
+                raise Exception(f"D1 Query Failed: {resp.status_code} {resp.text}")
             return resp.json()
 
     def _row_to_audit(self, row) -> Audit:
@@ -110,15 +111,33 @@ class CloudflareRepository(AuditRepository):
     async def delete_audit(self, audit_id: str) -> None:
         await self._d1_query('DELETE FROM audits WHERE audit_id = ?', [audit_id])
 
+    async def _d1_batch(self, batch_payload: list) -> dict:
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                f"{self.D1_BASE}/query",
+                json={"batch": batch_payload},
+                timeout=30.0,
+            )
+            if not resp.is_success:
+                raise Exception(f"D1 Batch Query Failed: {resp.status_code} {resp.text}")
+            return resp.json()
+
     # Usage Records
     async def save_records(self, records: List[UsageRecord]) -> int:
         if not records:
             return 0
-        for r in records:
-            await self._d1_query(
-                'INSERT INTO usage_records (record_id, audit_id, record_json) VALUES (?, ?, ?)',
-                [r.record_id, r.audit_id, r.model_dump_json()]
-            )
+        
+        batch_size = 50
+        for i in range(0, len(records), batch_size):
+            batch = records[i:i+batch_size]
+            payload = []
+            for r in batch:
+                payload.append({
+                    "query": 'INSERT INTO usage_records (record_id, audit_id, record_json) VALUES (?, ?, ?)',
+                    "params": [r.record_id, r.audit_id, r.model_dump_json()]
+                })
+            await self._d1_batch(payload)
+            
         return len(records)
 
     async def get_records(self, audit_id: str, limit: int = 1000, offset: int = 0) -> List[UsageRecord]:
