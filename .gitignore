@@ -19,7 +19,7 @@ env/
 *.env.local
 
 # Data directories — contain customer data
-data/
+/data/
 *.db
 *.sqlite3
 
