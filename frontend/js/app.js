@@ -466,9 +466,10 @@ async function handleSimulationSubmit(e) {
     const requestBody = {
       n_iterations: iterations,
       savings_target: savingsTarget,
+      seed: 42,
       distribution_specs: [
-        { name: "input_tokens", distribution: "uniform", params: { low: 0.8, high: 1.2 } },
-        { name: "output_tokens", distribution: "uniform", params: { low: 0.9, high: 1.1 } }
+        { variable_name: "input_tokens", distribution: "uniform", params: { low: 0.8, high: 1.2 } },
+        { variable_name: "output_tokens", distribution: "uniform", params: { low: 0.9, high: 1.1 } }
       ]
     };
 
