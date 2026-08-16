@@ -488,8 +488,8 @@ async function handleSimulationSubmit(e) {
       <td>${auditId.substring(0,8)}...</td>
       <td>Default Scen</td>
       <td><span style="color:var(--success)">Success</span></td>
-      <td>${formatCurrency(res.data.monthly_baseline_cost)}</td>
-      <td>${formatCurrency(res.data.monthly_projected_cost_stats.p50)}</td>
+      <td>${formatCurrency(res.data.baseline_stats.p50)}</td>
+      <td>${formatCurrency(res.data.optimized_stats.p50)}</td>
       <td style="color:var(--success)">${formatCurrency(res.data.monthly_savings_stats.p50)}</td>
     `;
     
