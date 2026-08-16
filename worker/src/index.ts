@@ -34,83 +34,8 @@ export class AuditorContainer extends Container {
   envVars = {
     STORAGE_BACKEND: "cloudflare",
     APP_ENV: "production",
-    API_KEY: "container-internal"
-  };
-  // Outbound handler: intercepts HTTP calls from Python container to Cloudflare services
-  static outbound = async (request: Request, env: Env): Promise<Response> => {
-    try {
-      const url = new URL(request.url);
-      const host = request.headers.get("Host") || url.hostname;
-
-      if (host === "my.d1") {
-        const body = await request.json() as { query?: string; params?: unknown[]; batch?: {query: string, params?: unknown[]}[] };
-        
-        if (body.batch) {
-          const statements = body.batch.map(b => env.DB.prepare(b.query).bind(...(b.params || [])));
-          const results = await env.DB.batch(statements);
-          return Response.json({ success: true, results: results.map(r => r.results) });
-        } else if (body.query) {
-          const { query, params = [] } = body;
-          const stmt = env.DB.prepare(query);
-          const result = await stmt.bind(...params).all();
-          return Response.json({ success: true, results: result.results, meta: result.meta });
-        }
-        return Response.json({ success: false, error: "Missing query or batch" }, { status: 400 });
-      }
-
-      if (host === "my.r2") {
-        const key = url.pathname.slice(1); // Remove leading /
-
-        if (request.method === "PUT") {
-          const contentType = request.headers.get("Content-Type") ?? "application/octet-stream";
-          await env.AUDIT_STORAGE.put(key, request.body, {
-            httpMetadata: { contentType },
-          });
-          return new Response(JSON.stringify({ success: true, key }), {
-            headers: { "Content-Type": "application/json" },
-          });
-        }
-
-        if (request.method === "DELETE") {
-          await env.AUDIT_STORAGE.delete(key);
-          return new Response(JSON.stringify({ success: true }), {
-            headers: { "Content-Type": "application/json" },
-          });
-        }
-
-        if (request.method === "GET") {
-          const obj = await env.AUDIT_STORAGE.get(key);
-          if (!obj) {
-            return new Response(JSON.stringify({ error: "Not Found" }), {
-              status: 404,
-              headers: { "Content-Type": "application/json" },
-            });
-          }
-          const contentType = obj.httpMetadata?.contentType ?? "application/octet-stream";
-          return new Response(obj.body, {
-            headers: { "Content-Type": contentType },
-          });
-        }
-
-        // LIST: GET http://my.r2/?prefix=audits/
-        if (request.method === "GET" && url.pathname === "/") {
-          const prefix = url.searchParams.get("prefix") ?? "";
-          const listed = await env.AUDIT_STORAGE.list({ prefix });
-          return Response.json({
-            keys: listed.objects.map((o) => ({ key: o.key, size: o.size })),
-            truncated: listed.truncated,
-          });
-        }
-
-        return new Response("Method Not Allowed", { status: 405 });
-      }
-
-      // If it doesn't match our virtual hosts, return 404
-      return new Response("Not Found", { status: 404 });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Outbound operation failed";
-      return Response.json({ success: false, error: message }, { status: 500 });
-    }
+    API_KEY: "container-internal",
+    WORKER_URL: "https://ai-cost-auditorv2.dl-56e.workers.dev"
   };
 }
 
@@ -134,6 +59,69 @@ export default {
     // Redirect root to API docs
     if (url.pathname === "/") {
       return Response.redirect(`${url.origin}/api/v1/docs`, 302);
+    }
+
+    // INTERNAL RPC routes for the container to access D1 and R2
+    if (url.pathname.startsWith("/internal/")) {
+      const apiKey = request.headers.get("X-API-Key");
+      if (!apiKey || apiKey !== env.API_KEY) {
+        return new Response("Unauthorized", { status: 401 });
+      }
+
+      if (url.pathname === "/internal/d1/query" && request.method === "POST") {
+        try {
+          const body = await request.json() as { query?: string; params?: unknown[]; batch?: {query: string, params?: unknown[]}[] };
+          if (body.batch) {
+            const statements = body.batch.map(b => env.DB.prepare(b.query).bind(...(b.params || [])));
+            const results = await env.DB.batch(statements);
+            return Response.json({ success: true, results: results.map(r => r.results) });
+          } else if (body.query) {
+            const { query, params = [] } = body;
+            const stmt = env.DB.prepare(query);
+            const result = await stmt.bind(...params).all();
+            return Response.json({ success: true, results: result.results, meta: result.meta });
+          }
+          return new Response("Bad Request", { status: 400 });
+        } catch (err) {
+          const message = err instanceof Error ? err.message : "D1 query failed";
+          return Response.json({ success: false, error: message }, { status: 500 });
+        }
+      }
+
+      if (url.pathname.startsWith("/internal/r2/")) {
+        const key = url.pathname.replace("/internal/r2/", "");
+        try {
+          if (request.method === "PUT") {
+            const contentType = request.headers.get("Content-Type") ?? "application/octet-stream";
+            await env.AUDIT_STORAGE.put(key, request.body, { httpMetadata: { contentType } });
+            return Response.json({ success: true, key });
+          }
+          if (request.method === "DELETE") {
+            await env.AUDIT_STORAGE.delete(key);
+            return Response.json({ success: true });
+          }
+          if (request.method === "GET") {
+            const obj = await env.AUDIT_STORAGE.get(key);
+            if (!obj) return new Response(JSON.stringify({ error: "Not Found" }), { status: 404 });
+            const contentType = obj.httpMetadata?.contentType ?? "application/octet-stream";
+            return new Response(obj.body, { headers: { "Content-Type": contentType } });
+          }
+        } catch (err) {
+          const message = err instanceof Error ? err.message : "R2 operation failed";
+          return Response.json({ success: false, error: message }, { status: 500 });
+        }
+      }
+      
+      if (url.pathname === "/internal/r2" && request.method === "GET") {
+         const prefix = url.searchParams.get("prefix") ?? "";
+         const listed = await env.AUDIT_STORAGE.list({ prefix });
+         return Response.json({
+           keys: listed.objects.map((o) => ({ key: o.key, size: o.size })),
+           truncated: listed.truncated,
+         });
+      }
+
+      return new Response("Not Found", { status: 404 });
     }
 
     // Health check, version, and docs bypass auth

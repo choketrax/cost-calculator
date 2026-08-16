@@ -9,15 +9,16 @@ from storage.base import AuditRepository, FileStorage
 class CloudflareRepository(AuditRepository):
     """Cloudflare D1 & R2 backed repository."""
     
-    D1_BASE = os.getenv("D1_BASE", "http://192.0.2.1")
-    R2_BASE = os.getenv("R2_BASE", "http://192.0.2.1")
+    D1_BASE = f"{os.getenv('WORKER_URL', 'http://127.0.0.1')}/internal/d1"
+    R2_BASE = f"{os.getenv('WORKER_URL', 'http://127.0.0.1')}/internal/r2"
+    API_KEY = os.getenv("API_KEY", "")
     
     async def _d1_query(self, query: str, params: list = None) -> dict:
         async with httpx.AsyncClient() as client:
             resp = await client.post(
                 f"{self.D1_BASE}/query",
                 json={"query": query, "params": params or []},
-                headers={"Host": "my.d1"},
+                headers={"X-API-Key": self.API_KEY},
                 timeout=30.0,
             )
             if not resp.is_success:
@@ -119,7 +120,7 @@ class CloudflareRepository(AuditRepository):
             resp = await client.post(
                 f"{self.D1_BASE}/query",
                 json={"batch": batch_payload},
-                headers={"Host": "my.d1"},
+                headers={"X-API-Key": self.API_KEY},
                 timeout=30.0,
             )
             if not resp.is_success:
@@ -214,19 +215,20 @@ class CloudflareRepository(AuditRepository):
         return result.get("meta", {}).get("changes", 0)
 
 class CloudflareFileStorage(FileStorage):
-    """Accesses R2 via http://192.0.2.1/{key} with Host: my.r2 header (intercepted by Worker catch-all outbound)."""
+    """Accesses R2 via WORKER_URL/internal/r2/{key} RPC"""
     
-    R2_BASE = "http://192.0.2.1"
+    R2_BASE = f"{os.getenv('WORKER_URL', 'http://127.0.0.1')}/internal/r2"
+    API_KEY = os.getenv("API_KEY", "")
     
     async def put(self, key: str, data: bytes, content_type: str = "application/octet-stream") -> None:
         async with httpx.AsyncClient() as client:
             resp = await client.put(f"{self.R2_BASE}/{key}", content=data,
-                           headers={"Content-Type": content_type, "Host": "my.r2"})
+                           headers={"Content-Type": content_type, "X-API-Key": self.API_KEY})
             resp.raise_for_status()
     
     async def get(self, key: str) -> Optional[bytes]:
         async with httpx.AsyncClient() as client:
-            resp = await client.get(f"{self.R2_BASE}/{key}", headers={"Host": "my.r2"})
+            resp = await client.get(f"{self.R2_BASE}/{key}", headers={"X-API-Key": self.API_KEY})
             if resp.status_code == 404:
                 return None
             resp.raise_for_status()
@@ -234,13 +236,13 @@ class CloudflareFileStorage(FileStorage):
             
     async def delete(self, key: str) -> None:
         async with httpx.AsyncClient() as client:
-            resp = await client.delete(f"{self.R2_BASE}/{key}", headers={"Host": "my.r2"})
+            resp = await client.delete(f"{self.R2_BASE}/{key}", headers={"X-API-Key": self.API_KEY})
             if resp.status_code != 404:
                 resp.raise_for_status()
                 
     async def list_keys(self, prefix: str = "") -> List[str]:
         async with httpx.AsyncClient() as client:
-            resp = await client.get(f"{self.R2_BASE}/", params={"prefix": prefix}, headers={"Host": "my.r2"})
+            resp = await client.get(self.R2_BASE, params={"prefix": prefix}, headers={"X-API-Key": self.API_KEY})
             if resp.status_code == 404:
                 return []
             resp.raise_for_status()
