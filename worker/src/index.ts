@@ -149,7 +149,7 @@ export default {
       url.pathname === "/api/v1/redoc" ||
       url.pathname === "/api/v1/openapi.json"
     ) {
-      const container = getContainer(env.AUDITOR_CONTAINER, "production-v1");
+      const container = getContainer(env.AUDITOR_CONTAINER, "production-v2");
       const response = await container.fetch(request);
       const newResponse = new Response(response.body, response);
       for (const [key, value] of Object.entries(corsHeaders)) {
@@ -193,7 +193,7 @@ export default {
     console.log(`[${request.method}] ${url.pathname}`);
 
     // Proxy authenticated request to container
-    const container = getContainer(env.AUDITOR_CONTAINER, "production-v1");
+    const container = getContainer(env.AUDITOR_CONTAINER, "production-v2");
     const response = await container.fetch(request);
     
     // Inject CORS headers into the response
