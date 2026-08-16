@@ -177,7 +177,10 @@
           <div class="card glass-panel mb-4">
             <div class="card-header">
               <h3>Audit Summary: <span id="detail-audit-id">...</span></h3>
-              <button class="btn secondary" id="btn-back-to-audits">Back to Audits</button>
+              <div style="display: flex; gap: 8px;">
+                <button class="btn secondary" id="btn-back-to-audits">Back to Audits</button>
+                <button class="btn danger" id="btn-delete-audit" style="background-color: var(--danger); color: white; border: none;">Delete</button>
+              </div>
             </div>
             <div class="stats-grid" style="margin-top: 16px;">
               <div class="stat-card">

@@ -24,6 +24,8 @@ const simAuditSelect = document.getElementById("sim-audit-id");
 const simStatus = document.getElementById("sim-status");
 const simBody = document.getElementById("simulations-body");
 
+let currentAuditId = null;
+
 // Navigation
 const navItems = document.querySelectorAll('.nav-menu .nav-item');
 const viewSections = document.querySelectorAll('.view-section');
@@ -82,6 +84,31 @@ document.addEventListener("DOMContentLoaded", () => {
     uploadForm.addEventListener("submit", handleUploadSubmit);
   }
   
+  const btnDeleteAudit = document.getElementById("btn-delete-audit");
+  if (btnDeleteAudit) {
+    btnDeleteAudit.addEventListener("click", async () => {
+      if (!currentAuditId) return;
+      if (!confirm("Are you sure you want to completely delete this audit and all of its records?")) return;
+      
+      const prevText = btnDeleteAudit.textContent;
+      btnDeleteAudit.textContent = "Deleting...";
+      btnDeleteAudit.disabled = true;
+      try {
+        await apiFetch(`/audits/${currentAuditId}`, { method: "DELETE" });
+        alert("Audit deleted successfully.");
+        // Go back to audits view
+        const auditsNavItem = document.querySelector('.nav-item[data-view="audits"]');
+        if (auditsNavItem) switchView("audits", auditsNavItem);
+      } catch (err) {
+        console.error("Failed to delete", err);
+        alert(`Failed to delete: ${err.message}`);
+      } finally {
+        btnDeleteAudit.textContent = prevText;
+        btnDeleteAudit.disabled = false;
+      }
+    });
+  }
+
   if (simForm) {
     simForm.addEventListener("submit", handleSimulationSubmit);
   }
@@ -258,6 +285,7 @@ async function loadAudits() {
 
 // Open Audit Details
 function openAuditDetails(auditId) {
+  currentAuditId = auditId;
   // Deselect nav items
   navItems.forEach(item => item.classList.remove("active"));
   
