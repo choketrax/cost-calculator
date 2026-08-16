@@ -8,7 +8,8 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@cloudflare/containers": "^0.3.7"
+    "@cloudflare/containers": "^0.3.7",
+    "jsdom": "^29.1.1"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241022.0",
