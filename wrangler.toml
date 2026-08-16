@@ -1,4 +1,4 @@
-name = "ai-cost-auditor"
+name = "ai-cost-auditorv2"
 main = "worker/src/index.ts"
 compatibility_date = "2026-08-14"
 compatibility_flags = ["nodejs_compat"]
@@ -18,7 +18,7 @@ bindings = [
 # Required migration for Durable Object
 [[migrations]]
 tag = "v1"
-new_classes = ["AuditorContainer"]
+new_sqlite_classes = ["AuditorContainer"]
 
 # D1 SQLite database for audit metadata
 # Create with: npx wrangler d1 create ai-cost-auditor-db
@@ -26,7 +26,7 @@ new_classes = ["AuditorContainer"]
 [[d1_databases]]
 binding = "DB"
 database_name = "ai-cost-auditor-db"
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
+database_id = "88c7fa1b-abc0-4912-8964-2f7abff74f24"
 
 # R2 for file storage (uploaded datasets, generated reports)
 # Create with: npx wrangler r2 bucket create ai-cost-auditor

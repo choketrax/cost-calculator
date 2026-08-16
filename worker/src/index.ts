@@ -7,7 +7,8 @@
 // The outboundByHost handlers allow the Python container to access D1 and R2
 // via plain HTTP calls to http://my.d1 and http://my.r2 virtual hostnames.
 
-import { Container, getContainer } from "@cloudflare/containers";
+import { Container, getContainer, ContainerProxy } from "@cloudflare/containers";
+export { ContainerProxy };
 
 export interface Env {
   AUDITOR_CONTAINER: DurableObjectNamespace;
@@ -30,6 +31,24 @@ export class AuditorContainer extends Container {
   sleepAfter = "30m"; // Scale-to-zero after 30 minutes of inactivity
   
   // No fetch override needed, 0.3.7 handles container lifecycle automatically!
+
+  async fetch(request: Request): Promise<Response> {
+    try {
+      await this.startAndWaitForPorts({
+        startOptions: {},
+        ports: 8000,
+        cancellationOptions: { portReadyTimeoutMS: 30000 },
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      // Surface the real error for debugging
+      return new Response(JSON.stringify({ error: "CONTAINER_START_FAILED", detail: msg }), {
+        status: 503,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    return super.fetch(request);
+  }
 
   // Outbound handler: intercepts HTTP calls from Python container to Cloudflare services
   static outboundByHost: Record<
