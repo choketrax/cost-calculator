@@ -29,26 +29,7 @@ export class AuditorContainer extends Container {
   defaultPort = 8000;
   sleepAfter = "30m"; // Scale-to-zero after 30 minutes of inactivity
   
-  // Provide empty envVars to prevent base class from crashing
-  envVars = {};
-
-  async fetch(request: Request) {
-    try {
-      // Explicitly ensure the container is started AND WAIT for the port to be ready.
-      // This prevents "internal error connecting to the port" caused by routing traffic before boot finishes.
-      await this.startAndWaitForPorts({
-        startOptions: { envVars: this.envVars }
-      });
-    } catch (err: any) {
-      if (err.message && err.message.toLowerCase().includes("already")) {
-        // Container is already running, this is fine
-      } else {
-        // Return the EXACT error message to the client for debugging!
-        return new Response("CONTAINER_START_ERROR: " + err.message + "\n" + err.stack, { status: 500 });
-      }
-    }
-    return super.fetch(request);
-  }
+  // No fetch override needed, 0.3.7 handles container lifecycle automatically!
 
   // Outbound handler: intercepts HTTP calls from Python container to Cloudflare services
   static outboundByHost: Record<
