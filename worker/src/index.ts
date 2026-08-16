@@ -37,13 +37,12 @@ export class AuditorContainer extends Container {
     API_KEY: "container-internal"
   };
   // Outbound handler: intercepts HTTP calls from Python container to Cloudflare services
-  static outboundByHost: Record<
-    string,
-    (request: Request, env: Env) => Promise<Response>
-  > = {
-    // D1 handler: Python calls POST http://my.d1/query with {query, params} or {batch: [{query, params}, ...]}
-    "my.d1": async (request: Request, env: Env): Promise<Response> => {
-      try {
+  static outbound = async (request: Request, env: Env): Promise<Response> => {
+    try {
+      const url = new URL(request.url);
+      const host = request.headers.get("Host") || url.hostname;
+
+      if (host === "my.d1") {
         const body = await request.json() as { query?: string; params?: unknown[]; batch?: {query: string, params?: unknown[]}[] };
         
         if (body.batch) {
@@ -57,16 +56,9 @@ export class AuditorContainer extends Container {
           return Response.json({ success: true, results: result.results, meta: result.meta });
         }
         return Response.json({ success: false, error: "Missing query or batch" }, { status: 400 });
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "D1 query failed";
-        return Response.json({ success: false, error: message }, { status: 500 });
       }
-    },
 
-    // R2 handler: Python calls GET/PUT/DELETE http://my.r2/{key}
-    "my.r2": async (request: Request, env: Env): Promise<Response> => {
-      try {
-        const url = new URL(request.url);
+      if (host === "my.r2") {
         const key = url.pathname.slice(1); // Remove leading /
 
         if (request.method === "PUT") {
@@ -111,11 +103,14 @@ export class AuditorContainer extends Container {
         }
 
         return new Response("Method Not Allowed", { status: 405 });
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "R2 operation failed";
-        return Response.json({ success: false, error: message }, { status: 500 });
       }
-    },
+
+      // If it doesn't match our virtual hosts, return 404
+      return new Response("Not Found", { status: 404 });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Outbound operation failed";
+      return Response.json({ success: false, error: message }, { status: 500 });
+    }
   };
 }
 
@@ -149,7 +144,7 @@ export default {
       url.pathname === "/api/v1/redoc" ||
       url.pathname === "/api/v1/openapi.json"
     ) {
-      const container = getContainer(env.AUDITOR_CONTAINER, "production-v2");
+      const container = getContainer(env.AUDITOR_CONTAINER, "production-v3");
       const response = await container.fetch(request);
       const newResponse = new Response(response.body, response);
       for (const [key, value] of Object.entries(corsHeaders)) {
@@ -193,7 +188,7 @@ export default {
     console.log(`[${request.method}] ${url.pathname}`);
 
     // Proxy authenticated request to container
-    const container = getContainer(env.AUDITOR_CONTAINER, "production-v2");
+    const container = getContainer(env.AUDITOR_CONTAINER, "production-v3");
     const response = await container.fetch(request);
     
     // Inject CORS headers into the response
