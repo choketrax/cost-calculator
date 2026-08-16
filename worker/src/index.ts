@@ -30,25 +30,7 @@ export class AuditorContainer extends Container {
   defaultPort = 8000;
   sleepAfter = "30m"; // Scale-to-zero after 30 minutes of inactivity
   
-  // No fetch override needed, 0.3.7 handles container lifecycle automatically!
 
-  async fetch(request: Request): Promise<Response> {
-    try {
-      await this.startAndWaitForPorts({
-        startOptions: {},
-        ports: 8000,
-        cancellationOptions: { portReadyTimeoutMS: 30000 },
-      });
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      // Surface the real error for debugging
-      return new Response(JSON.stringify({ error: "CONTAINER_START_FAILED", detail: msg }), {
-        status: 503,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-    return super.fetch(request);
-  }
 
   // Outbound handler: intercepts HTTP calls from Python container to Cloudflare services
   static outboundByHost: Record<
