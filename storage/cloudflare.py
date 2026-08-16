@@ -6,9 +6,12 @@ from core.models import Audit, UsageRecord, Finding, SimulationManifest
 from storage.base import AuditRepository, FileStorage
 
 class CloudflareRepository(AuditRepository):
-    """Accesses D1 via http://my.d1/query (intercepted by Worker outboundByHost)."""
+    """Cloudflare D1 & R2 backed repository."""
     
-    D1_BASE = "http://my.d1"
+    # Use 1.1.1.1 to bypass Python's DNS resolution inside the container. 
+    # Cloudflare's outboundByHost interceptor will catch traffic to 1.1.1.1
+    D1_BASE = os.getenv("D1_BASE", "http://1.1.1.1")
+    R2_BASE = os.getenv("R2_BASE", "http://1.0.0.1")
     
     async def _d1_query(self, query: str, params: list = None) -> dict:
         async with httpx.AsyncClient() as client:
