@@ -208,8 +208,8 @@ async function loadPricing() {
     const tbody = document.getElementById("pricing-body");
     tbody.innerHTML = "";
 
-    if (data.entries && data.entries.length > 0) {
-      data.entries.forEach(entry => {
+    if (data.data && data.data.length > 0) {
+      data.data.forEach(entry => {
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td><span class="badge ${entry.provider}">${entry.provider}</span></td>
