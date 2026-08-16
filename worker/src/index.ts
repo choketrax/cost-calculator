@@ -34,10 +34,15 @@ export class AuditorContainer extends Container {
 
   async fetch(request: Request) {
     try {
-      // Explicitly ensure the container is started to bypass "The container is not running, consider calling start()"
+      // Explicitly ensure the container is started
       await this.ctx.container.start({ env: this.envVars });
     } catch (err: any) {
-      // Container may already be started, ignore
+      if (err.message && err.message.toLowerCase().includes("already")) {
+        // Container is already running, this is fine
+      } else {
+        // Return the EXACT error message to the client for debugging!
+        return new Response("CONTAINER_START_ERROR: " + err.message + "\n" + err.stack, { status: 500 });
+      }
     }
     return super.fetch(request);
   }
