@@ -51,6 +51,13 @@ class GenericCSVImporter(BaseImporter):
                         
                     provider = row_lower.get("provider", "generic")
                     model = row_lower.get("model", "unknown")
+                    
+                    if provider == "generic" or not provider:
+                        if model.startswith("gpt-") or model.startswith("text-embedding"):
+                            provider = "openai"
+                        elif model.startswith("claude-"):
+                            provider = "anthropic"
+                            
                     app_val = row_lower.get("application") or row_lower.get("app") or application
                     wl_val = row_lower.get("workload") or workload
                     
