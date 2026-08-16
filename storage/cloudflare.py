@@ -1,4 +1,5 @@
 import httpx
+import os
 from typing import Optional, Tuple, List
 from datetime import datetime, date
 from decimal import Decimal
