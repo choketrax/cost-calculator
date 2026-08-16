@@ -34,8 +34,11 @@ export class AuditorContainer extends Container {
 
   async fetch(request: Request) {
     try {
-      // Explicitly ensure the container is started
-      await this.ctx.container.start({ env: this.envVars });
+      // Explicitly ensure the container is started AND WAIT for the port to be ready.
+      // This prevents "internal error connecting to the port" caused by routing traffic before boot finishes.
+      await this.startAndWaitForPorts({
+        startOptions: { envVars: this.envVars }
+      });
     } catch (err: any) {
       if (err.message && err.message.toLowerCase().includes("already")) {
         // Container is already running, this is fine
