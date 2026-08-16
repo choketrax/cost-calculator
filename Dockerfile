@@ -8,9 +8,15 @@ WORKDIR /build
 # Install uv directly
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
+# Copy project files AND source code required for building
 COPY pyproject.toml .
-# Use uv to install dependencies directly into the system python
-RUN uv pip install --system --no-cache .
+COPY core/ ./core/
+COPY storage/ ./storage/
+COPY api/ ./api/
+
+# Install dependencies and the package itself
+RUN uv pip install --system --no-cache ".[llm]" \
+    && uv pip install --system --no-cache pip-audit
 
 # Aggressive artifact cleanup: remove __pycache__, .pyc files, and tests to reduce image size
 RUN find /usr/local/lib/python3.12/site-packages -name "__pycache__" -exec rm -rf {} + \
