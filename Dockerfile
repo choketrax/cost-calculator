@@ -53,8 +53,9 @@ COPY storage/ ./storage/
 COPY api/ ./api/
 COPY pyproject.toml .
 
-# Create data directories
+# Create data directories and force cache bust
 RUN mkdir -p /app/data/uploads /app/data \
+    && echo "cache-bust-v2" > /app/version.txt \
     && chown -R auditor:auditor /app
 
 USER auditor
