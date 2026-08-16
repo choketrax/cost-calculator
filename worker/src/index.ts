@@ -26,6 +26,13 @@ export interface Env {
  *   http://my.r2/{key}  → R2 object storage
  */
 export class AuditorContainer extends Container {
+  public env: Env;
+
+  constructor(ctx: any, env: Env) {
+    super(ctx, env);
+    this.env = env;
+  }
+
   defaultPort = 8000;
   sleepAfter = "30m"; // Scale-to-zero after 30 minutes of inactivity
 

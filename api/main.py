@@ -22,29 +22,33 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialize storage, pricing registry, and other shared resources on startup."""
-    settings = get_settings()
-    logger.setLevel(getattr(logging, settings.log_level.upper(), logging.INFO))
+    try:
+        settings = get_settings()
+        logger.setLevel(getattr(logging, settings.log_level.upper(), logging.INFO))
 
-    # Initialize storage
-    from storage.factory import create_storage
-    repo, file_storage = await create_storage(settings)
+        # Initialize storage
+        from storage.factory import create_storage
+        repo, file_storage = await create_storage(settings)
 
-    # Initialize pricing registry
-    from core.pricing.registry import PricingRegistry
-    pricing_data_path = Path(__file__).parent.parent / "core" / "pricing" / "data" / "pricing_v1.json"
-    registry = PricingRegistry(pricing_data_path)
-    registry.load()
+        # Initialize pricing registry
+        from core.pricing.registry import PricingRegistry
+        pricing_data_path = Path(__file__).parent.parent / "core" / "pricing" / "data" / "pricing_v1.json"
+        registry = PricingRegistry(pricing_data_path)
+        registry.load()
 
-    # Store on app.state for access in routes
-    app.state.settings = settings
-    app.state.repo = repo
-    app.state.file_storage = file_storage
-    app.state.pricing_registry = registry
+        # Store on app.state for access in routes
+        app.state.settings = settings
+        app.state.repo = repo
+        app.state.file_storage = file_storage
+        app.state.pricing_registry = registry
 
-    logger.info(f"AI Cost Auditor v{settings.app_version} started (backend: {settings.storage_backend})")
-    logger.info(f"Pricing registry loaded: {len(registry.list_entries())} active entries")
+        logger.info(f"AI Cost Auditor v{settings.app_version} started (backend: {settings.storage_backend})")
+        logger.info(f"Pricing registry loaded: {len(registry.list_entries())} active entries")
 
-    yield
+        yield
+    except Exception as e:
+        logger.error(f"Failed to start AI Cost Auditor: {e}", exc_info=True)
+        raise
 
     logger.info("AI Cost Auditor shutting down")
 
