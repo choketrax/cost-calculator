@@ -41,8 +41,8 @@ export class AuditorContainer extends Container {
     string,
     (request: Request, env: Env) => Promise<Response>
   > = {
-    // D1 handler: Python calls POST http://1.1.1.1/query with {query, params} or {batch: [{query, params}, ...]}
-    "1.1.1.1": async (request: Request, env: Env): Promise<Response> => {
+    // D1 handler: Python calls POST http://my.d1/query with {query, params} or {batch: [{query, params}, ...]}
+    "my.d1": async (request: Request, env: Env): Promise<Response> => {
       try {
         const body = await request.json() as { query?: string; params?: unknown[]; batch?: {query: string, params?: unknown[]}[] };
         
@@ -64,7 +64,7 @@ export class AuditorContainer extends Container {
     },
 
     // R2 handler: Python calls GET/PUT/DELETE http://my.r2/{key}
-    "1.0.0.1": async (request: Request, env: Env): Promise<Response> => {
+    "my.r2": async (request: Request, env: Env): Promise<Response> => {
       try {
         const url = new URL(request.url);
         const key = url.pathname.slice(1); // Remove leading /

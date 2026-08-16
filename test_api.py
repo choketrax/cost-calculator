@@ -9,7 +9,7 @@ async def test_flow():
     
     # 1. Create audit
     print("1. Creating audit...")
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=60.0) as client:
         resp = await client.post(
             f"{API_BASE}/audits",
             headers=headers,
@@ -25,7 +25,7 @@ async def test_flow():
     file_content = b"date,model,input_tokens,output_tokens,cached_tokens,requests,organization_id\n2024-10-01,gpt-4o,1250000,450000,0,3500,org-test\n"
     files = {"file": ("test.csv", file_content, "text/csv")}
     data = {"application": "test-app", "workload": "test-wl"}
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=60.0) as client:
         resp = await client.post(
             f"{API_BASE}/audits/{audit_id}/upload",
             headers=headers,
@@ -39,7 +39,7 @@ async def test_flow():
         
     # 3. Ingest data
     print("3. Ingesting data...")
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=60.0) as client:
         resp = await client.post(
             f"{API_BASE}/audits/{audit_id}/ingest",
             headers=headers,
