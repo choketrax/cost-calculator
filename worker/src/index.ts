@@ -26,24 +26,15 @@ export interface Env {
  *   http://my.r2/{key}  → R2 object storage
  */
 export class AuditorContainer extends Container {
-  public env: Env;
-
-  constructor(ctx: any, env: Env) {
-    super(ctx, env);
-    this.env = env;
-  }
-
   defaultPort = 8000;
   sleepAfter = "30m"; // Scale-to-zero after 30 minutes of inactivity
 
   // Pass environment variables from the Worker to the Python Container
-  envVars() {
-    return {
-      API_KEY: this.env.API_KEY || "missing-key-please-set",
-      APP_ENV: this.env.APP_ENV || "production",
-      STORAGE_BACKEND: "cloudflare",
-    };
-  }
+  envVars = {
+    API_KEY: this.env.API_KEY || "missing-key-please-set",
+    APP_ENV: this.env.APP_ENV || "production",
+    STORAGE_BACKEND: "cloudflare",
+  };
 
   // Outbound handler: intercepts HTTP calls from Python container to Cloudflare services
   static outboundByHost: Record<
