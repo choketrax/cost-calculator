@@ -43,6 +43,10 @@ COPY --from=builder /opt/venv /opt/venv
 ENV VIRTUAL_ENV=/opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
+# Set runtime environment
+ENV STORAGE_BACKEND="cloudflare"
+ENV APP_ENV="production"
+
 # Copy application code
 COPY core/ ./core/
 COPY storage/ ./storage/

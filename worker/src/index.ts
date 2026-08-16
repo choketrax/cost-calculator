@@ -28,18 +28,6 @@ export interface Env {
 export class AuditorContainer extends Container {
   defaultPort = 8000;
   sleepAfter = "30m"; // Scale-to-zero after 30 minutes of inactivity
-  
-  public envVars: Record<string, string>;
-
-  constructor(ctx: any, env: Env) {
-    super(ctx, env);
-    // Properly set environment variables using the provided env
-    this.envVars = {
-      API_KEY: env.API_KEY || "missing-key-please-set",
-      APP_ENV: env.APP_ENV || "production",
-      STORAGE_BACKEND: "cloudflare",
-    };
-  }
 
   // Outbound handler: intercepts HTTP calls from Python container to Cloudflare services
   static outboundByHost: Record<

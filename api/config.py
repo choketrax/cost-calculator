@@ -7,8 +7,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    # Required
-    api_key: str = Field(..., description="API authentication key")
+    # Required (except when running behind Cloudflare Worker proxy)
+    api_key: str = Field("local-dev-key", description="API authentication key")
 
     # Storage
     storage_backend: str = Field("local", description="'local' or 'cloudflare'")
