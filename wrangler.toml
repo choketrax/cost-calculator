@@ -18,7 +18,7 @@ bindings = [
 # Required migration for Durable Object
 [[migrations]]
 tag = "v1"
-new_sqlite_classes = ["AuditorContainer"]
+new_classes = ["AuditorContainer"]
 
 # D1 SQLite database for audit metadata
 # Create with: npx wrangler d1 create ai-cost-auditor-db

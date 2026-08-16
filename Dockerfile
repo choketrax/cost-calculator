@@ -67,4 +67,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
     CMD sh -c "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:${PORT:-8000}/api/v1/health')\"" || exit 1
 
 # Start uvicorn with production settings. Support PORT env var dynamically if injected by runtime.
-CMD ["sh", "-c", "uvicorn api.main:app --host :: --port ${PORT:-8000} --workers 1 --log-level info --access-log"]
+CMD ["sh", "-c", "uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1 --log-level info --access-log"]
