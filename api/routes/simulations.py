@@ -33,6 +33,24 @@ async def run_simulation(audit_id: str, body: SimulateRequest, request: Request)
 
     # Build pricing info from registry for default scenario
     pricing_info = body.pricing_info or {}
+    if not pricing_info:
+        # Auto-detect pricing from the audit's most common model
+        records = await repo.get_all_records(audit_id)
+        if records:
+            from collections import Counter
+            models = Counter((r.provider, r.model) for r in records)
+            top_provider, top_model = models.most_common(1)[0][0]
+            price_entry = registry.get_price(top_provider, top_model)
+            if price_entry:
+                pricing_info = {
+                    "baseline_input_price": float(price_entry.input_token_price),
+                    "baseline_output_price": float(price_entry.output_token_price),
+                    "opt_input_price": float(price_entry.input_token_price),
+                    "opt_output_price": float(price_entry.output_token_price),
+                    "opt_cached_price": float(price_entry.cached_input_price),
+                    "cheap_model_input_price": float(price_entry.input_token_price) * 0.1,
+                    "cheap_model_output_price": float(price_entry.output_token_price) * 0.1,
+                }
 
     from core.montecarlo.engine import MonteCarloEngine
     from core.montecarlo.manifest import hash_dict
