@@ -460,25 +460,35 @@ async function handleSimulationSubmit(e) {
   if (!auditId) return;
 
   try {
+    simStatus.textContent = "Fetching audit usage data...";
+    const auditData = await apiFetch(`/audits/${auditId}/costs`);
+    const costs = auditData.data;
+    
+    const totalRequests = costs.total_requests || 1;
+    const avgInputTokens = costs.total_requests > 0 ? (costs.total_input_tokens / costs.total_requests) : 1000;
+    const avgOutputTokens = costs.total_requests > 0 ? (costs.total_output_tokens / costs.total_requests) : 200;
+
     simStatus.textContent = "Running Monte Carlo Engine... this may take a moment.";
     simStatus.style.color = "var(--text-primary)";
     
+    // Divide prices by 1000 to fix backend division error (backend divides by 1000 instead of 1000000)
     const requestBody = {
       n_iterations: iterations,
       savings_target: savingsTarget,
       seed: 42,
       pricing_info: {
-        baseline_input_price: 2.50,
-        baseline_output_price: 10.00,
-        opt_input_price: 2.50,
-        opt_output_price: 10.00,
-        opt_cached_price: 1.25,
-        cheap_model_input_price: 0.15,
-        cheap_model_output_price: 0.60
+        baseline_input_price: 0.0025,
+        baseline_output_price: 0.010,
+        opt_input_price: 0.0025,
+        opt_output_price: 0.010,
+        opt_cached_price: 0.00125,
+        cheap_model_input_price: 0.00015,
+        cheap_model_output_price: 0.00060
       },
       distribution_specs: [
-        { variable_name: "input_tokens", distribution: "uniform", params: { low: 0.8, high: 1.2 } },
-        { variable_name: "output_tokens", distribution: "uniform", params: { low: 0.9, high: 1.1 } }
+        { variable_name: "request_volume", distribution: "uniform", params: { low: totalRequests, high: totalRequests } },
+        { variable_name: "input_tokens_per_request", distribution: "uniform", params: { low: avgInputTokens * 0.8, high: avgInputTokens * 1.2 } },
+        { variable_name: "output_tokens_per_request", distribution: "uniform", params: { low: avgOutputTokens * 0.9, high: avgOutputTokens * 1.1 } }
       ]
     };
 
