@@ -487,8 +487,11 @@ async function handleSimulationSubmit(e) {
       },
       distribution_specs: [
         { variable_name: "request_volume", distribution: "uniform", params: { low: totalRequests, high: totalRequests } },
-        { variable_name: "input_tokens_per_request", distribution: "uniform", params: { low: avgInputTokens * 0.8, high: avgInputTokens * 1.2 } },
-        { variable_name: "output_tokens_per_request", distribution: "uniform", params: { low: avgOutputTokens * 0.9, high: avgOutputTokens * 1.1 } }
+        { variable_name: "input_tokens_per_request", distribution: "uniform", params: { low: avgInputTokens * 0.9, high: avgInputTokens * 1.1 } },
+        { variable_name: "output_tokens_per_request", distribution: "uniform", params: { low: avgOutputTokens * 0.9, high: avgOutputTokens * 1.1 } },
+        { variable_name: "cache_hit_rate", distribution: "uniform", params: { low: 0.4, high: 0.6 } },
+        { variable_name: "context_reduction", distribution: "uniform", params: { low: 0.1, high: 0.3 } },
+        { variable_name: "routing_cheap_fraction", distribution: "uniform", params: { low: 0.0, high: 0.2 } }
       ]
     };
 
