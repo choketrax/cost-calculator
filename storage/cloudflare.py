@@ -9,8 +9,8 @@ from storage.base import AuditRepository, FileStorage
 class CloudflareRepository(AuditRepository):
     """Cloudflare D1 & R2 backed repository."""
     
-    D1_BASE = os.getenv("D1_BASE", "http://127.0.0.1")
-    R2_BASE = os.getenv("R2_BASE", "http://127.0.0.1")
+    D1_BASE = os.getenv("D1_BASE", "http://192.0.2.1")
+    R2_BASE = os.getenv("R2_BASE", "http://192.0.2.1")
     
     async def _d1_query(self, query: str, params: list = None) -> dict:
         async with httpx.AsyncClient() as client:
@@ -214,9 +214,9 @@ class CloudflareRepository(AuditRepository):
         return result.get("meta", {}).get("changes", 0)
 
 class CloudflareFileStorage(FileStorage):
-    """Accesses R2 via http://127.0.0.1/{key} with Host: my.r2 header (intercepted by Worker catch-all outbound)."""
+    """Accesses R2 via http://192.0.2.1/{key} with Host: my.r2 header (intercepted by Worker catch-all outbound)."""
     
-    R2_BASE = "http://127.0.0.1"
+    R2_BASE = "http://192.0.2.1"
     
     async def put(self, key: str, data: bytes, content_type: str = "application/octet-stream") -> None:
         async with httpx.AsyncClient() as client:
