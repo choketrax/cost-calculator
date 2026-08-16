@@ -32,6 +32,16 @@ export class AuditorContainer extends Container {
   // Provide empty envVars to prevent base class from crashing
   envVars = {};
 
+  async fetch(request: Request) {
+    try {
+      // Explicitly ensure the container is started to bypass "The container is not running, consider calling start()"
+      await this.ctx.container.start({ env: this.envVars });
+    } catch (err: any) {
+      // Container may already be started, ignore
+    }
+    return super.fetch(request);
+  }
+
   // Outbound handler: intercepts HTTP calls from Python container to Cloudflare services
   static outboundByHost: Record<
     string,
