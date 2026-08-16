@@ -30,10 +30,10 @@ export class AuditorContainer extends Container {
   sleepAfter = "30m"; // Scale-to-zero after 30 minutes of inactivity
 
   // Pass environment variables from the Worker to the Python Container
-  envVars(env: Env) {
+  envVars() {
     return {
-      API_KEY: env.API_KEY || "missing-key-please-set",
-      APP_ENV: env.APP_ENV || "production",
+      API_KEY: this.env.API_KEY || "missing-key-please-set",
+      APP_ENV: this.env.APP_ENV || "production",
       STORAGE_BACKEND: "cloudflare",
     };
   }
