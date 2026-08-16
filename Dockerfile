@@ -1,5 +1,5 @@
 # AI Cost Auditor — Production Dockerfile
-# Multi-stage build for minimal image size
+# Multi-stage build using uv and a virtual environment for maximum reliability
 
 FROM python:3.12-slim AS builder
 
@@ -8,20 +8,25 @@ WORKDIR /build
 # Install uv directly
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
+# Create a virtual environment
+RUN uv venv /opt/venv
+ENV VIRTUAL_ENV=/opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
 # Copy project files AND source code required for building
 COPY pyproject.toml .
 COPY core/ ./core/
 COPY storage/ ./storage/
 COPY api/ ./api/
 
-# Install dependencies and the package itself
-RUN uv pip install --system --no-cache ".[llm]" \
-    && uv pip install --system --no-cache pip-audit
+# Install dependencies and the package itself into the venv
+RUN uv pip install --no-cache ".[llm]" \
+    && uv pip install --no-cache pip-audit
 
-# Aggressive artifact cleanup: remove __pycache__, .pyc files, and tests to reduce image size
-RUN find /usr/local/lib/python3.12/site-packages -name "__pycache__" -exec rm -rf {} + \
-    && find /usr/local/lib/python3.12/site-packages -name "*.pyc" -delete \
-    && find /usr/local/lib/python3.12/site-packages -type d -name "tests" -exec rm -rf {} +
+# Aggressive artifact cleanup
+RUN find /opt/venv -name "__pycache__" -exec rm -rf {} + \
+    && find /opt/venv -name "*.pyc" -delete \
+    && find /opt/venv -type d -name "tests" -exec rm -rf {} +
 
 # -------------------------------------------------------
 FROM python:3.12-slim AS runtime
@@ -31,9 +36,12 @@ RUN useradd -m -u 1001 auditor
 
 WORKDIR /app
 
-# Copy installed packages from builder
-COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
-COPY --from=builder /usr/local/bin /usr/local/bin
+# Copy the virtual environment from the builder
+COPY --from=builder /opt/venv /opt/venv
+
+# Activate the virtual environment for all subsequent commands
+ENV VIRTUAL_ENV=/opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
 # Copy application code
 COPY core/ ./core/
@@ -41,7 +49,7 @@ COPY storage/ ./storage/
 COPY api/ ./api/
 COPY pyproject.toml .
 
-# Create data directories (used for local/volume-mounted data)
+# Create data directories
 RUN mkdir -p /app/data/uploads /app/data \
     && chown -R auditor:auditor /app
 
