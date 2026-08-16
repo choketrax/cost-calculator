@@ -172,6 +172,52 @@
           </div>
         </section>
 
+        <!-- Audit Details View -->
+        <section id="view-audit-details" class="view-section hidden">
+          <div class="card glass-panel mb-4">
+            <div class="card-header">
+              <h3>Audit Summary: <span id="detail-audit-id">...</span></h3>
+              <button class="btn secondary" id="btn-back-to-audits">Back to Audits</button>
+            </div>
+            <div class="stats-grid" style="margin-top: 16px;">
+              <div class="stat-card">
+                <h4>Total Cost</h4>
+                <div class="stat-value" id="detail-total-cost">$0.00</div>
+              </div>
+              <div class="stat-card">
+                <h4>Total Requests</h4>
+                <div class="stat-value" id="detail-total-requests">0</div>
+              </div>
+              <div class="stat-card">
+                <h4>Tokens (In / Out)</h4>
+                <div class="stat-value" style="font-size: 1.2rem;"><span id="detail-input-tokens">0</span> / <span id="detail-output-tokens">0</span></div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="card glass-panel">
+            <div class="card-header">
+              <h3>Cost Breakdown</h3>
+            </div>
+            <div style="display: flex; gap: 24px; padding-top: 16px; flex-wrap: wrap;">
+              <div style="flex: 1; min-width: 300px;">
+                <h4>By Provider</h4>
+                <table class="table-responsive" style="width: 100%;">
+                  <thead><tr><th>Provider</th><th>Cost</th></tr></thead>
+                  <tbody id="detail-provider-body"></tbody>
+                </table>
+              </div>
+              <div style="flex: 1; min-width: 300px;">
+                <h4>By Model</h4>
+                <table class="table-responsive" style="width: 100%;">
+                  <thead><tr><th>Model</th><th>Cost</th></tr></thead>
+                  <tbody id="detail-model-body"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <!-- Simulations View -->
         <section id="view-simulations" class="view-section hidden">
           <div class="card glass-panel">

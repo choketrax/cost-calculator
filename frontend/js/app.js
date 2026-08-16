@@ -69,6 +69,15 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
   
+  const btnBackToAudits = document.getElementById("btn-back-to-audits");
+  if (btnBackToAudits) {
+    btnBackToAudits.addEventListener("click", () => {
+      // Find the Audits nav item and switch to it
+      const auditsNavItem = document.querySelector('.nav-item[data-view="audits"]');
+      if (auditsNavItem) switchView("audits", auditsNavItem);
+    });
+  }
+  
   if (uploadForm) {
     uploadForm.addEventListener("submit", handleUploadSubmit);
   }
@@ -169,6 +178,8 @@ async function loadDashboard() {
         totalRequests += parseInt(audit.total_records || 0);
         
         const tr = document.createElement("tr");
+        tr.style.cursor = "pointer";
+        tr.onclick = () => openAuditDetails(audit.audit_id);
         tr.innerHTML = `
           <td>${audit.audit_id.substring(0, 8)}...</td>
           <td>${audit.application || '-'}</td>
@@ -226,6 +237,8 @@ async function loadAudits() {
     if (data.data && data.data.length > 0) {
       data.data.forEach(audit => {
         const tr = document.createElement("tr");
+        tr.style.cursor = "pointer";
+        tr.onclick = () => openAuditDetails(audit.audit_id);
         tr.innerHTML = `
           <td>${audit.audit_id}</td>
           <td>${audit.application || '-'}</td>
@@ -240,6 +253,54 @@ async function loadAudits() {
     }
   } catch (err) {
     console.error("Audits error", err);
+  }
+}
+
+// Open Audit Details
+function openAuditDetails(auditId) {
+  // Deselect nav items
+  navItems.forEach(item => item.classList.remove("active"));
+  
+  viewSections.forEach(section => section.classList.add("hidden"));
+  document.getElementById("view-audit-details").classList.remove("hidden");
+  viewTitle.textContent = "Audit Details";
+  
+  loadAuditDetails(auditId);
+}
+
+async function loadAuditDetails(auditId) {
+  try {
+    document.getElementById("detail-audit-id").textContent = auditId.substring(0, 8) + "...";
+    document.getElementById("detail-total-cost").textContent = "Loading...";
+    document.getElementById("detail-provider-body").innerHTML = '<tr><td colspan="2">Loading...</td></tr>';
+    document.getElementById("detail-model-body").innerHTML = '<tr><td colspan="2">Loading...</td></tr>';
+
+    const data = await apiFetch(`/audits/${auditId}/costs`);
+    const costs = data.data;
+
+    document.getElementById("detail-total-cost").textContent = formatCurrency(costs.total_cost || 0);
+    document.getElementById("detail-total-requests").textContent = formatNumber(costs.total_requests || 0);
+    document.getElementById("detail-input-tokens").textContent = formatNumber(costs.total_input_tokens || 0);
+    document.getElementById("detail-output-tokens").textContent = formatNumber(costs.total_output_tokens || 0);
+
+    const renderTable = (dict, tbodyId) => {
+      const tbody = document.getElementById(tbodyId);
+      tbody.innerHTML = "";
+      if (!dict || Object.keys(dict).length === 0) {
+        tbody.innerHTML = '<tr><td colspan="2">No data</td></tr>';
+        return;
+      }
+      for (const [key, val] of Object.entries(dict)) {
+        tbody.innerHTML += `<tr><td>${key}</td><td>${formatCurrency(val)}</td></tr>`;
+      }
+    };
+
+    renderTable(costs.cost_by_provider, "detail-provider-body");
+    renderTable(costs.cost_by_model, "detail-model-body");
+
+  } catch (err) {
+    console.error("Failed to load audit details", err);
+    document.getElementById("detail-total-cost").textContent = "Error";
   }
 }
 
@@ -304,7 +365,7 @@ async function handleUploadSubmit(e) {
     // Refresh Data
     setTimeout(() => {
       uploadModal.classList.add("hidden");
-      loadAudits();
+      openAuditDetails(auditId);
     }, 1500);
 
   } catch (err) {
