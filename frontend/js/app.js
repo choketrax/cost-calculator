@@ -144,6 +144,25 @@ function switchView(viewId, activeNavItem) {
   if (viewId === "simulations") loadSimulationsSetup();
 }
 
+// Delete Audit from anywhere
+async function deleteAudit(auditId) {
+  if (!confirm("Are you sure you want to completely delete this audit?")) return;
+  try {
+    await apiFetch(`/audits/${auditId}`, { method: "DELETE" });
+    alert("Audit deleted successfully.");
+    loadDashboard();
+    loadAudits();
+    // If currently viewing this audit, go back
+    if (currentAuditId === auditId) {
+      const auditsNavItem = document.querySelector('.nav-item[data-view="audits"]');
+      if (auditsNavItem) switchView("audits", auditsNavItem);
+    }
+  } catch (err) {
+    console.error("Failed to delete", err);
+    alert(`Failed to delete: ${err.message}`);
+  }
+}
+
 // API Fetch Wrapper
 async function apiFetch(endpoint, options = {}) {
   const headers = { ...options.headers };
@@ -213,6 +232,7 @@ async function loadDashboard() {
           <td>${audit.workload || '-'}</td>
           <td>${formatNumber(audit.total_records || 0)}</td>
           <td>${formatCurrency(audit.baseline_monthly_cost || 0)}</td>
+          <td><button class="btn danger btn-sm" onclick="event.stopPropagation(); deleteAudit('${audit.audit_id}')" style="background-color: var(--danger); color: white; padding: 4px 8px; border: none; border-radius: 4px;">Delete</button></td>
         `;
         tbody.appendChild(tr);
       });
@@ -272,6 +292,7 @@ async function loadAudits() {
           <td>${audit.workload || '-'}</td>
           <td>${formatNumber(audit.total_records || 0)}</td>
           <td>${formatCurrency(audit.baseline_monthly_cost || 0)}</td>
+          <td><button class="btn danger btn-sm" onclick="event.stopPropagation(); deleteAudit('${audit.audit_id}')" style="background-color: var(--danger); color: white; padding: 4px 8px; border: none; border-radius: 4px;">Delete</button></td>
         `;
         tbody.appendChild(tr);
       });
