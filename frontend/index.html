@@ -77,6 +77,33 @@
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
           Pricing
         </button>
+
+        <div style="margin: 16px 0 8px 16px; font-size: 0.75rem; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.05em;">Control Pack</div>
+        
+        <button class="nav-item" data-view="scp-savings">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+          Savings Summary
+        </button>
+        <button class="nav-item" data-view="scp-spend">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+          Spend by Entity
+        </button>
+        <button class="nav-item" data-view="scp-outcomes">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M16 12l-4-4-4 4M12 8v8"></path></svg>
+          Cost/Outcome
+        </button>
+        <button class="nav-item" data-view="scp-budgets">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="M18 17V9"></path><path d="M13 17V5"></path><path d="M8 17v-3"></path></svg>
+          Budgets
+        </button>
+        <button class="nav-item" data-view="scp-alerts">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+          Alerts
+        </button>
+        <button class="nav-item" data-view="scp-optimizations">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+          Optimizations
+        </button>
       </nav>
       
       <div class="sidebar-footer">
@@ -305,10 +332,158 @@
           </div>
         </section>
 
+        <!-- SCP: Savings Summary -->
+        <section id="view-scp-savings" class="view-section hidden">
+          <div id="scp-savings-content"></div>
+        </section>
+
+        <!-- SCP: Spend by Entity -->
+        <section id="view-scp-spend" class="view-section hidden">
+          <div id="scp-spend-content"></div>
+        </section>
+
+        <!-- SCP: Cost/Outcome -->
+        <section id="view-scp-outcomes" class="view-section hidden">
+          <div id="scp-outcomes-content"></div>
+        </section>
+
+        <!-- SCP: Budgets -->
+        <section id="view-scp-budgets" class="view-section hidden">
+          <div id="scp-budgets-content"></div>
+        </section>
+
+        <!-- SCP: Alerts -->
+        <section id="view-scp-alerts" class="view-section hidden">
+          <div id="scp-alerts-content"></div>
+        </section>
+
+        <!-- SCP: Optimizations -->
+        <section id="view-scp-optimizations" class="view-section hidden">
+          <div id="scp-optimizations-content"></div>
+        </section>
+
       </div>
     </main>
   </div>
 
+  <style>
+    /* Control Pack Styles */
+    .scp-progress-bar {
+      width: 100%;
+      height: 8px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+    .scp-progress-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.3s ease;
+    }
+    .scp-progress-fill.green { background: var(--success); }
+    .scp-progress-fill.yellow { background: var(--warning); }
+    .scp-progress-fill.red { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
+
+    .scp-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .scp-badge.ok { background: rgba(16,185,129,0.1); color: var(--success); border: 1px solid rgba(16,185,129,0.3); }
+    .scp-badge.warning { background: rgba(245,158,11,0.1); color: var(--warning); border: 1px solid rgba(245,158,11,0.3); }
+    .scp-badge.critical, .scp-badge.exceeded, .scp-badge.circuit-open { background: rgba(239,68,68,0.1); color: var(--danger); border: 1px solid rgba(239,68,68,0.3); }
+
+    .scp-action-chip {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .scp-action-allow { background: rgba(16,185,129,0.15); color: var(--success); }
+    .scp-action-alert { background: rgba(245,158,11,0.15); color: var(--warning); }
+    .scp-action-route { background: rgba(59,130,246,0.15); color: #3b82f6; }
+    .scp-action-pause { background: rgba(239,68,68,0.15); color: var(--danger); }
+
+    .scp-concentration-bar {
+      display: flex;
+      width: 100%;
+      height: 12px;
+      border-radius: 6px;
+      overflow: hidden;
+      margin-top: 16px;
+    }
+    .scp-conc-seg { height: 100%; }
+    
+    .scp-sparkline {
+      display: flex;
+      align-items: flex-end;
+      gap: 2px;
+      height: 40px;
+      margin-top: 8px;
+    }
+    .scp-spark-bar {
+      width: 12px;
+      background: var(--accent-color);
+      border-radius: 2px 2px 0 0;
+      opacity: 0.8;
+      transition: height 0.3s;
+    }
+    .scp-spark-bar:hover { opacity: 1; }
+    
+    .scp-tabs {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--panel-border);
+    }
+    .scp-tab {
+      padding: 8px 16px;
+      cursor: pointer;
+      color: var(--text-secondary);
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+    .scp-tab.active {
+      color: var(--accent-color);
+      border-bottom-color: var(--accent-color);
+    }
+  </style>
+
   <script src="js/app.js?v=11"></script>
+  <script type="module">
+    import { ControlPack } from './js/control-pack.js';
+    window.ControlPack = ControlPack;
+    
+    // Add click listeners to new nav items and hook them up
+    document.addEventListener('DOMContentLoaded', () => {
+      // The app.js handles nav item active states. We need to hook up our init
+      setTimeout(() => {
+        ControlPack.init();
+      }, 500);
+      
+      const navItems = document.querySelectorAll('.nav-item');
+      navItems.forEach(item => {
+        item.addEventListener('click', (e) => {
+          const view = e.currentTarget.getAttribute('data-view');
+          if (!view) return;
+          
+          document.getElementById('current-view-title').innerText = e.currentTarget.innerText.trim();
+          
+          if (view === 'scp-savings') ControlPack.renderSavingsSummary();
+          else if (view === 'scp-spend') ControlPack.renderSpendByEntity();
+          else if (view === 'scp-outcomes') ControlPack.renderCostPerOutcome();
+          else if (view === 'scp-budgets') ControlPack.renderBudgets();
+          else if (view === 'scp-alerts') ControlPack.renderAlerts();
+          else if (view === 'scp-optimizations') ControlPack.renderOptimizations();
+        });
+      });
+    });
+  </script>
 </body>
 </html>

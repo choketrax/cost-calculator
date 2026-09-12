@@ -57,3 +57,11 @@ include = ["core*", "api*", "storage*"]
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+
+[dependency-groups]
+dev = [
+    "anyio[asyncio]>=4.14.2",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "respx>=0.23.1",
+]

@@ -1,26 +1,27 @@
-// Cloudflare Worker — AI Cost Auditor Gateway
-// Handles authentication and proxies to FastAPI container.
-// 
-// Requires @cloudflare/containers package (npm install @cloudflare/containers)
+// Cloudflare Worker — AI Cost Auditor Gateway + Spend Control Pack
+// Handles authentication, proxies to FastAPI container, and provides the
+// SCP Policy Authority at /control/v1/* via the Hono control router.
 //
-// The Container class uses Durable Objects to manage the FastAPI container lifecycle.
-// The outboundByHost handlers allow the Python container to access D1 and R2
-// via plain HTTP calls to http://my.d1 and http://my.r2 virtual hostnames.
+// Requires @cloudflare/containers package (npm install @cloudflare/containers)
+// Requires hono package (npm install hono)
 
 import { Container, getContainer, ContainerProxy } from "@cloudflare/containers";
+import { controlRouter, SCPEnv } from "./control";
+import { proxyRouter } from "./proxy";
+import { handleScheduled, handleQueue, SCPEvent } from "./alerts";
 export { ContainerProxy };
+export { BudgetDO } from "./budget_do";
 
-export interface Env {
-  AUDITOR_CONTAINER: DurableObjectNamespace;
-  DB: D1Database;
-  AUDIT_STORAGE: R2Bucket;
-  API_KEY: string;
-  APP_ENV: string;
+export interface Env extends SCPEnv {
+  // SCPEnv already includes: AUDITOR_CONTAINER, DB, AUDIT_STORAGE, API_KEY,
+  // APP_ENV, SCP_EVENTS, SLACK_WEBHOOK_URL, EMAIL_FROM, PORTKEY_API_KEY
+  BUDGET_DO: DurableObjectNamespace;
+  PORTKEY_BASE_URL?: string;
 }
 
 /**
  * AuditorContainer — Cloudflare Container wrapping the FastAPI app.
- * 
+ *
  * The FastAPI app runs on port 8000 inside the container.
  * outboundByHost intercepts Python HTTP calls to virtual hostnames:
  *   http://my.d1/query  → D1 SQL execution
@@ -29,13 +30,13 @@ export interface Env {
 export class AuditorContainer extends Container {
   defaultPort = 8000;
   sleepAfter = "30m"; // Scale-to-zero after 30 minutes of inactivity
-  
+
   // Inject environment variables into the Python container
   envVars = {
     STORAGE_BACKEND: "cloudflare",
     APP_ENV: "production",
     API_KEY: "container-internal",
-    WORKER_URL: "https://ai-cost-auditorv2.dl-56e.workers.dev"
+    WORKER_URL: "https://ai-cost-auditorv2.dl-56e.workers.dev",
   };
 }
 
@@ -61,6 +62,21 @@ export default {
       return Response.redirect(`${url.origin}/api/v1/docs`, 302);
     }
 
+    // Spend Control Pack — AI API Proxy (owns all financial decisions)
+    if (url.pathname.startsWith("/proxy/v1/")) {
+      const apiKey = request.headers.get("X-API-Key");
+      if (!apiKey || apiKey !== env.API_KEY) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }),
+          { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } });
+      }
+      const response = await proxyRouter.fetch(request, env);
+      const newResponse = new Response(response.body, response);
+      for (const [key, value] of Object.entries(corsHeaders)) {
+        newResponse.headers.set(key, value);
+      }
+      return newResponse;
+    }
+
     // INTERNAL RPC routes for the container to access D1 and R2
     if (url.pathname.startsWith("/internal/")) {
       const apiKey = request.headers.get("X-API-Key");
@@ -70,21 +86,38 @@ export default {
 
       if (url.pathname === "/internal/d1/query" && request.method === "POST") {
         try {
-          const body = await request.json() as { query?: string; params?: unknown[]; batch?: {query: string, params?: unknown[]}[] };
+          const body = (await request.json()) as {
+            query?: string;
+            params?: unknown[];
+            batch?: { query: string; params?: unknown[] }[];
+          };
           if (body.batch) {
-            const statements = body.batch.map(b => env.DB.prepare(b.query).bind(...(b.params || [])));
+            const statements = body.batch.map((b) =>
+              env.DB.prepare(b.query).bind(...(b.params || [])),
+            );
             const results = await env.DB.batch(statements);
-            return Response.json({ success: true, results: results.map(r => r.results) });
+            return Response.json({
+              success: true,
+              results: results.map((r) => r.results),
+            });
           } else if (body.query) {
             const { query, params = [] } = body;
             const stmt = env.DB.prepare(query);
             const result = await stmt.bind(...params).all();
-            return Response.json({ success: true, results: result.results, meta: result.meta });
+            return Response.json({
+              success: true,
+              results: result.results,
+              meta: result.meta,
+            });
           }
           return new Response("Bad Request", { status: 400 });
         } catch (err) {
-          const message = err instanceof Error ? err.message : "D1 query failed";
-          return Response.json({ success: false, error: message }, { status: 500 });
+          const message =
+            err instanceof Error ? err.message : "D1 query failed";
+          return Response.json(
+            { success: false, error: message },
+            { status: 500 },
+          );
         }
       }
 
@@ -92,8 +125,11 @@ export default {
         const key = url.pathname.replace("/internal/r2/", "");
         try {
           if (request.method === "PUT") {
-            const contentType = request.headers.get("Content-Type") ?? "application/octet-stream";
-            await env.AUDIT_STORAGE.put(key, request.body, { httpMetadata: { contentType } });
+            const contentType =
+              request.headers.get("Content-Type") ?? "application/octet-stream";
+            await env.AUDIT_STORAGE.put(key, request.body, {
+              httpMetadata: { contentType },
+            });
             return Response.json({ success: true, key });
           }
           if (request.method === "DELETE") {
@@ -102,23 +138,33 @@ export default {
           }
           if (request.method === "GET") {
             const obj = await env.AUDIT_STORAGE.get(key);
-            if (!obj) return new Response(JSON.stringify({ error: "Not Found" }), { status: 404 });
-            const contentType = obj.httpMetadata?.contentType ?? "application/octet-stream";
-            return new Response(obj.body, { headers: { "Content-Type": contentType } });
+            if (!obj)
+              return new Response(JSON.stringify({ error: "Not Found" }), {
+                status: 404,
+              });
+            const contentType =
+              obj.httpMetadata?.contentType ?? "application/octet-stream";
+            return new Response(obj.body, {
+              headers: { "Content-Type": contentType },
+            });
           }
         } catch (err) {
-          const message = err instanceof Error ? err.message : "R2 operation failed";
-          return Response.json({ success: false, error: message }, { status: 500 });
+          const message =
+            err instanceof Error ? err.message : "R2 operation failed";
+          return Response.json(
+            { success: false, error: message },
+            { status: 500 },
+          );
         }
       }
-      
+
       if (url.pathname === "/internal/r2" && request.method === "GET") {
-         const prefix = url.searchParams.get("prefix") ?? "";
-         const listed = await env.AUDIT_STORAGE.list({ prefix });
-         return Response.json({
-           keys: listed.objects.map((o) => ({ key: o.key, size: o.size })),
-           truncated: listed.truncated,
-         });
+        const prefix = url.searchParams.get("prefix") ?? "";
+        const listed = await env.AUDIT_STORAGE.list({ prefix });
+        return Response.json({
+          keys: listed.objects.map((o) => ({ key: o.key, size: o.size })),
+          truncated: listed.truncated,
+        });
       }
 
       return new Response("Not Found", { status: 404 });
@@ -147,16 +193,19 @@ export default {
       return new Response(
         JSON.stringify({
           status: "error",
-          error: { code: "UNAUTHORIZED", message: "Invalid or missing API key" },
+          error: {
+            code: "UNAUTHORIZED",
+            message: "Invalid or missing API key",
+          },
         }),
         {
           status: 401,
           headers: {
             "Content-Type": "application/json",
             "WWW-Authenticate": "ApiKey",
-            ...corsHeaders
+            ...corsHeaders,
           },
-        }
+        },
       );
     }
 
@@ -166,9 +215,15 @@ export default {
       return new Response(
         JSON.stringify({
           status: "error",
-          error: { code: "PAYLOAD_TOO_LARGE", message: "Request exceeds 50MB limit" },
+          error: {
+            code: "PAYLOAD_TOO_LARGE",
+            message: "Request exceeds 50MB limit",
+          },
         }),
-        { status: 413, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        {
+          status: 413,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        },
       );
     }
 
@@ -178,7 +233,7 @@ export default {
     // Proxy authenticated request to container
     const container = getContainer(env.AUDITOR_CONTAINER, "production-v4");
     const response = await container.fetch(request);
-    
+
     // Inject CORS headers into the response
     const newResponse = new Response(response.body, response);
     for (const [key, value] of Object.entries(corsHeaders)) {

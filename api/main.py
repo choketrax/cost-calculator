@@ -15,6 +15,7 @@ from fastapi.responses import JSONResponse
 
 from .config import get_settings
 from .routes import audits, findings, scenarios, simulations, pricing_routes
+from .routes import policies, budgets, spend, routing, reports
 
 logger = logging.getLogger(__name__)
 
@@ -145,3 +146,10 @@ app.include_router(findings.router, prefix="/api/v1")
 app.include_router(scenarios.router, prefix="/api/v1")
 app.include_router(simulations.router, prefix="/api/v1")
 app.include_router(pricing_routes.router, prefix="/api/v1")
+
+# Spend Control Pack routes (carry their own /api/v1 prefix internally)
+app.include_router(policies.router)
+app.include_router(budgets.router)
+app.include_router(spend.router)
+app.include_router(routing.router)
+app.include_router(reports.router)

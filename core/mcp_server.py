@@ -67,6 +67,77 @@ def get_model_pricing(provider: str, model: str) -> str:
 
 
 @mcp.tool()
+async def ingest_file(filepath: str, audit_id: str) -> str:
+    """
+    Ingest usage records from a file into an audit.
+
+    Args:
+        filepath: The absolute path to the file to ingest.
+        audit_id: The ID of the audit to attach the records to.
+    """
+    if not os.path.exists(filepath):
+        return f"Error: File '{filepath}' not found."
+    
+    from core.ingest.dispatcher import ImporterDispatcher
+    dispatcher = ImporterDispatcher()
+    
+    with open(filepath, "rb") as f:
+        data = f.read()
+    
+    filename = os.path.basename(filepath)
+    content_type = "application/json" if filename.endswith(".json") else "text/csv" if filename.endswith(".csv") else "text/plain"
+    
+    try:
+        records, file_hash = dispatcher.import_file(
+            data=data,
+            filename=filename,
+            content_type=content_type,
+            audit_id=audit_id
+        )
+    except Exception as e:
+        return f"Error during ingestion: {e}"
+        
+    if not records:
+        return "No usage records found in the file."
+        
+    repo = await get_repo()
+    audit = await repo.get_audit(audit_id)
+    from datetime import date
+    if not audit:
+        # Create a new audit
+        from core.models import Audit
+        audit = Audit(audit_id=audit_id, customer_name="Local Audit", period_start=date.today(), period_end=date.today())
+        await repo.save_audit(audit)
+        
+    for rec in records:
+        await repo.save_record(rec)
+        
+    audit.total_records += len(records)
+    # Re-calculate baseline
+    all_records = await repo.get_all_records(audit_id)
+    registry = get_registry()
+    
+    from decimal import Decimal
+    total_cost = Decimal("0")
+    for r in all_records:
+        if r.raw_cost is not None and r.raw_cost > 0:
+            total_cost += r.raw_cost
+        else:
+            p = registry.get_price(r.provider, r.model)
+            if p:
+                cost = (Decimal(r.input_tokens) * p.input_token_price / 1_000_000) + \
+                       (Decimal(r.output_tokens) * p.output_token_price / 1_000_000) + \
+                       (Decimal(r.cached_tokens) * p.cached_input_price / 1_000_000)
+                r.cost = cost
+                total_cost += cost
+    
+    audit.baseline_monthly_cost = total_cost
+    await repo.update_audit(audit)
+    
+    return f"Successfully ingested {len(records)} records. New baseline cost: ${total_cost:,.2f}"
+
+
+@mcp.tool()
 async def get_audit_summary(audit_id: str) -> str:
     """
     Get a high-level cost summary for a specific audit.

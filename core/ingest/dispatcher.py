@@ -7,10 +7,12 @@ from .generic_csv_importer import GenericCSVImporter
 from .generic_json_importer import GenericJSONImporter
 from .manual_importer import ManualImporter
 from .openai_importer import OpenAIImporter
+from .tokentab_importer import TokentabImporter
 
 class ImporterDispatcher:
     def __init__(self):
         self.importers = [
+            TokentabImporter(),
             OpenAIImporter(),
             AnthropicImporter(),
             ManualImporter(),

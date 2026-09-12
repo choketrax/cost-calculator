@@ -12,7 +12,8 @@ max_instances = 3
 # Container bound via Durable Objects
 [durable_objects]
 bindings = [
-  { name = "AUDITOR_CONTAINER", class_name = "AuditorContainer" }
+  { name = "AUDITOR_CONTAINER", class_name = "AuditorContainer" },
+  { name = "BUDGET_DO", class_name = "BudgetDO" }
 ]
 
 # Required migration for Durable Object
@@ -20,19 +21,44 @@ bindings = [
 tag = "v1"
 new_sqlite_classes = ["AuditorContainer"]
 
-# D1 SQLite database for audit metadata
+# Add v2 migration for BudgetDO
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["BudgetDO"]
+
+# D1 SQLite database for audit metadata + SCP tables
 # Create with: npx wrangler d1 create ai-cost-auditor-db
-# Then paste the database_id below
+# Apply SCP migration: npx wrangler d1 execute ai-cost-auditor-db --file=./schema_scp.sql
 [[d1_databases]]
 binding = "DB"
 database_name = "ai-cost-auditor-db"
 database_id = "88c7fa1b-abc0-4912-8964-2f7abff74f24"
 
-# R2 for file storage (uploaded datasets, generated reports)
+# R2 for file storage (uploaded datasets, generated reports, proof exports)
 # Create with: npx wrangler r2 bucket create ai-cost-auditor
 [[r2_buckets]]
 binding = "AUDIT_STORAGE"
 bucket_name = "ai-cost-auditor"
+
+# ---------------------------------------------------------------------------
+# Spend Control Pack bindings
+# ---------------------------------------------------------------------------
+
+# Queue for async policy event recording (fire-and-forget from authorize)
+# Create with: npx wrangler queues create scp-events
+[[queues.producers]]
+binding = "SCP_EVENTS"
+queue = "scp-events"
+
+[[queues.consumers]]
+queue = "scp-events"
+max_batch_size = 100
+max_batch_timeout = 5
+max_retries = 3
+
+# Scheduled cron: alert checks + circuit breaker evaluation every 5 minutes
+[triggers]
+crons = ["*/5 * * * *"]
 
 # Non-sensitive configuration
 [vars]
@@ -40,5 +66,11 @@ APP_ENV = "production"
 API_KEY = "container-internal"
 
 # Secrets (set with: npx wrangler secret put <NAME>)
-# API_KEY — required, used for authentication
+# API_KEY           — required, main auth token
+# SLACK_WEBHOOK_URL — optional, Slack alerts for SCP budget notifications
+# EMAIL_FROM        — optional, sender address for email alerts
+# PORTKEY_API_KEY   — optional, Portkey gateway integration key
+# PORTKEY_BASE_URL  — optional, Portkey gateway base URL (e.g. https://api.portkey.ai)
+#                     If not set, proxy forwards directly to provider
+# BUDGET_DO         — bound DO namespace
 # The Container receives env vars via the AuditorContainer class envVars definition

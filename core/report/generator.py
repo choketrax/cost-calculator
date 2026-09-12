@@ -198,12 +198,31 @@ class ReportGenerator:
         """Compile all report data from structured sources (never LLM)."""
         breakdown = self.calculator.build_cost_breakdown(records) if records else None
 
-        # Sort findings by potential savings desc
+        # Sort findings by Actionability Score
+        # Formula: (P50 Savings * Confidence * Ease * Reversibility) / Quality Risk
+        def actionability_score(f: Finding) -> float:
+            ease_mult = 1.0 if f.implementation_effort == "low" else 0.5 if f.implementation_effort == "medium" else 0.2
+            rev_mult = 1.0 if f.reversibility == "high" else 0.5 if f.reversibility == "medium" else 0.1
+            risk_div = 1.0 if f.quality_risk == "low" else 2.0 if f.quality_risk == "medium" else 5.0
+            
+            return float(f.savings_p50) * f.confidence * ease_mult * rev_mult / risk_div
+            
         sorted_findings = sorted(
             findings,
-            key=lambda f: f.potential_savings_low,
+            key=actionability_score,
             reverse=True,
         )
+        
+        for f in sorted_findings:
+            score = actionability_score(f)
+            if score > 5000 and f.quality_risk == "low":
+                f.review_status = "DO NOW"
+            elif f.quality_risk == "medium" and score > 1000:
+                f.review_status = "TEST"
+            elif score > 100:
+                f.review_status = "INVESTIGATE"
+            else:
+                f.review_status = "MONITOR"
 
         # Aggregate simulation stats (latest simulation if any)
         sim_stats = None
