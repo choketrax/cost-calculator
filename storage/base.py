@@ -61,6 +61,10 @@ class AuditRepository(ABC):
     @abstractmethod
     async def delete_simulations(self, audit_id: str) -> int: ...
 
+    # Raw Queries
+    @abstractmethod
+    async def execute_raw(self, query: str, params: list = None) -> dict: ...
+
 class FileStorage(ABC):
     @abstractmethod
     async def put(self, key: str, data: bytes, content_type: str = "application/octet-stream") -> None: ...

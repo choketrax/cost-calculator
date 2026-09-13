@@ -25,6 +25,9 @@ class CloudflareRepository(AuditRepository):
                 raise Exception(f"D1 Query Failed: {resp.status_code} {resp.text}")
             return resp.json()
 
+    async def execute_raw(self, query: str, params: list = None) -> dict:
+        return await self._d1_query(query, params)
+
     def _row_to_audit(self, row) -> Audit:
         if isinstance(row, dict):
             return Audit(
