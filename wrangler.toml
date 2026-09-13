@@ -1,4 +1,5 @@
 name = "ai-cost-auditorv2"
+account_id = "56e8d68c2c46720b0d77df12d63da7e2"
 main = "worker/src/index.ts"
 compatibility_date = "2026-08-14"
 compatibility_flags = ["nodejs_compat"]
