@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { SCPEnv, evaluatePolicy, PolicyEvalContext, PolicyRow } from "./control";
 
-export const proxyRouter = new Hono<{ Bindings: SCPEnv & { BUDGET_DO: DurableObjectNamespace; PORTKEY_API_KEY?: string; PORTKEY_BASE_URL?: string } }>();
+export const proxyRouter = new Hono<{ Bindings: SCPEnv & { BUDGET_DO: DurableObjectNamespace; PORTKEY_API_KEY?: string; PORTKEY_BASE_URL?: string } }>().basePath("/proxy/v1");
 
 const MODEL_PRICES: Record<string, {input: number, output: number}> = {
   'gpt-4o': {input: 2.50, output: 10.00},           // per 1M tokens
