@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { SCPEnv, evaluatePolicy, PolicyEvalContext, PolicyRow } from "./control";
 
-export const proxyRouter = new Hono<{ Bindings: SCPEnv & { BUDGET_DO: DurableObjectNamespace; PORTKEY_API_KEY?: string; PORTKEY_BASE_URL?: string } }>().basePath("/proxy/v1");
+export const proxyRouter = new Hono<{ Bindings: SCPEnv & { BUDGET_DO: DurableObjectNamespace; PORTKEY_API_KEY?: string; PORTKEY_BASE_URL?: string } }>();
 
 const MODEL_PRICES: Record<string, {input: number, output: number}> = {
   'gpt-4o': {input: 2.50, output: 10.00},           // per 1M tokens
@@ -21,7 +21,7 @@ function estimateCost(model: string, inputTokens: number, outputTokens: number):
   return (inputTokens * prices.input + outputTokens * prices.output) / 1_000_000;
 }
 
-proxyRouter.get("/health", (c) => {
+proxyRouter.get("/proxy/v1/health", (c) => {
   return c.json({
     status: 'ok',
     gateway: c.env.PORTKEY_BASE_URL ?? 'direct',
@@ -29,7 +29,7 @@ proxyRouter.get("/health", (c) => {
   });
 });
 
-proxyRouter.post("/chat/completions", async (c) => {
+proxyRouter.post("/proxy/v1/chat/completions", async (c) => {
   const env = c.env;
   
   // Stable identity for this request — client must send same ID on retry

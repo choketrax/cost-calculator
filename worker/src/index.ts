@@ -42,7 +42,7 @@ export class AuditorContainer extends Container {
 
 // Worker entry point — authenticates and proxies to container
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
     const corsHeaders = {
@@ -69,7 +69,7 @@ export default {
         return new Response(JSON.stringify({ error: "Unauthorized" }),
           { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } });
       }
-      const response = await proxyRouter.fetch(request, env);
+      const response = await proxyRouter.fetch(request, env, ctx);
       const newResponse = new Response(response.body, response);
       for (const [key, value] of Object.entries(corsHeaders)) {
         newResponse.headers.set(key, value);
