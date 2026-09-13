@@ -178,13 +178,17 @@ export default {
       url.pathname === "/api/v1/redoc" ||
       url.pathname === "/api/v1/openapi.json"
     ) {
-      const container = getContainer(env.AUDITOR_CONTAINER, "production-v4");
-      const response = await container.fetch(request);
-      const newResponse = new Response(response.body, response);
-      for (const [key, value] of Object.entries(corsHeaders)) {
-        newResponse.headers.set(key, value);
+      try {
+        const container = getContainer(env.AUDITOR_CONTAINER, "production-v4");
+        const response = await container.fetch(request);
+        const newResponse = new Response(response.body, response);
+        for (const [key, value] of Object.entries(corsHeaders)) {
+          newResponse.headers.set(key, value);
+        }
+        return newResponse;
+      } catch (e) {
+        return new Response(JSON.stringify({ error: String(e), stack: e instanceof Error ? e.stack : "" }), { status: 500, headers: { "Content-Type": "application/json" } });
       }
-      return newResponse;
     }
 
     // All other endpoints require API key
@@ -227,19 +231,24 @@ export default {
       );
     }
 
-    // Log the request path (no body content)
-    console.log(`[${request.method}] ${url.pathname}`);
-
-    // Proxy authenticated request to container
-    const container = getContainer(env.AUDITOR_CONTAINER, "production-v4");
-    const response = await container.fetch(request);
-
-    // Inject CORS headers into the response
-    const newResponse = new Response(response.body, response);
-    for (const [key, value] of Object.entries(corsHeaders)) {
-      newResponse.headers.set(key, value);
+    try {
+      // Log the request path (no body content)
+      console.log(`[${request.method}] ${url.pathname}`);
+  
+      // Proxy authenticated request to container
+      const container = getContainer(env.AUDITOR_CONTAINER, "production-v4");
+      const response = await container.fetch(request);
+  
+      // Inject CORS headers into the response
+      const newResponse = new Response(response.body, response);
+      for (const [key, value] of Object.entries(corsHeaders)) {
+        newResponse.headers.set(key, value);
+      }
+      return newResponse;
+    } catch (e) {
+      console.error(e);
+      return new Response(JSON.stringify({ error: String(e), stack: e instanceof Error ? e.stack : "" }), { status: 500, headers: { "Content-Type": "application/json" } });
     }
-    return newResponse;
   },
   
   async queue(batch: MessageBatch<SCPEvent>, env: Env): Promise<void> {
