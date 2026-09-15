@@ -1,4 +1,30 @@
 services:
+  agentgateway:
+    image: ghcr.io/agentgateway/agentgateway:latest
+    ports:
+      - "3000:3000"
+      - "4000:4000"
+    volumes:
+      - ./agentgateway.yaml:/cfg/agentgateway.yaml:ro
+    command: --file=/cfg/agentgateway.yaml
+    restart: unless-stopped
+    depends_on:
+      - mcp
+
+  mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["sh", "-c", "ai-cost-auditor-mcp"]
+    environment:
+      - MCP_TRANSPORT=sse
+      - MCP_PORT=8001
+      - MCP_HOST=0.0.0.0
+      - AUDITOR_DATA_DIR=/app/data
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+
   api:
     build:
       context: .
@@ -12,25 +38,17 @@ services:
       - STORAGE_PATH=/app/data/uploads
       - LLM_ENABLED=${LLM_ENABLED:-false}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_BASE_URL=http://agentgateway:4000/v1
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
     volumes:
       - ./data:/app/data
     restart: unless-stopped
+    depends_on:
+      - agentgateway
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 15s
-
-# Uncomment to add a simple nginx reverse proxy for local TLS testing:
-# proxy:
-#   image: nginx:alpine
-#   ports:
-#     - "443:443"
-#   volumes:
-#     - ./nginx.conf:/etc/nginx/nginx.conf:ro
-#     - ./certs:/etc/nginx/certs:ro
-#   depends_on:
-#     - api

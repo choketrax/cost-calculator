@@ -1,0 +1,233 @@
+﻿# yaml-language-server: $schema=https://agentgateway.dev/schema/config
+# AgentGateway configuration for the Spend Control Pack
+# Data Plane: AgentGateway (Rust) handles all LLM routing, MCP sessions, retries, load balancing.
+# Control Plane: AI Cost Auditor / SCP (Cloudflare) provides ExtAuthz, budget enforcement, and the D1 ledger.
+
+config:
+  adminAddr: "localhost:15000"         # Admin UI:  http://localhost:15000
+  statsAddr: "0.0.0.0:15020"          # Prometheus: http://localhost:15020/metrics
+  mcp:
+    sessionTtl: "30m"                  # Auto-close idle MCP sessions after 30 minutes
+  logging:
+    level: info
+    format: json
+  # Uncomment to enable OpenTelemetry tracing export
+  # tracing:
+  #   otlpEndpoint: "http://localhost:4318"
+  #   otlpProtocol: http
+
+# =============================================================================
+# LLM GATEWAY
+# Exposes an OpenAI-compatible API on port 3000.
+# Agents point their SDKs at http://<this-host>:3000 instead of api.openai.com.
+# =============================================================================
+llm:
+  # Model cost catalog - used for budget pre-validation before forwarding
+  config:
+    modelCatalog:
+      - inline:
+          providers:
+            openai:
+              models:
+                gpt-4o:
+                  rates: {input: "2.50", output: "10.00"}
+                gpt-4o-mini:
+                  rates: {input: "0.15", output: "0.60"}
+                gpt-4-turbo:
+                  rates: {input: "10.00", output: "30.00"}
+                gpt-3.5-turbo:
+                  rates: {input: "0.50", output: "1.50"}
+            anthropic:
+              models:
+                claude-opus-4-5:
+                  rates: {input: "15.00", output: "75.00"}
+                claude-sonnet-4-5:
+                  rates: {input: "3.00", output: "15.00"}
+                claude-haiku-3-5:
+                  rates: {input: "0.80", output: "4.00"}
+            google:
+              models:
+                gemini-2.5-pro:
+                  rates: {input: "1.25", output: "10.00"}
+                gemini-2.0-flash:
+                  rates: {input: "0.10", output: "0.40"}
+
+  # API key authentication for agents connecting to AgentGateway
+  policies:
+    apiKey:
+      mode: strict
+      location:
+        header:
+          name: x-api-key
+      keys:
+        - key: $AGW_API_KEY
+          metadata:
+            name: "SCP Internal"
+            owner: "spend-control-pack"
+
+  # LLM Providers
+  providers:
+    - name: openai
+      provider: openAI
+      params:
+        apiKey: $OPENAI_API_KEY
+
+    - name: anthropic
+      provider: anthropic
+      params:
+        apiKey: $ANTHROPIC_API_KEY
+
+    - name: google
+      provider: googleGemini
+      params:
+        apiKey: $GOOGLE_API_KEY
+
+    # Portkey as optional fallback (not a required dependency)
+    # SCP routes to this when cost-optimization routing fires
+    - name: portkey
+      provider: openAI                   # Portkey is OpenAI-compatible
+      params:
+        apiKey: $PORTKEY_API_KEY
+        baseURL: "https://api.portkey.ai/v1"
+
+  # Models exposed to agents
+  models:
+    - name: gpt-4o
+      provider: {reference: openai}
+      params: {model: gpt-4o}
+
+    - name: gpt-4o-mini
+      provider: {reference: openai}
+      params: {model: gpt-4o-mini}
+
+    - name: gpt-4-turbo
+      provider: {reference: openai}
+      params: {model: gpt-4-turbo}
+
+    - name: claude-opus-4-5
+      provider: {reference: anthropic}
+      params: {model: claude-opus-4-5}
+
+    - name: claude-sonnet-4-5
+      provider: {reference: anthropic}
+      params: {model: claude-sonnet-4-5}
+
+    - name: claude-haiku-3-5
+      provider: {reference: anthropic}
+      params: {model: claude-haiku-3-5}
+
+    - name: gemini-2.5-pro
+      provider: {reference: google}
+      params: {model: gemini-2.5-pro}
+
+    - name: gemini-2.0-flash
+      provider: {reference: google}
+      params: {model: gemini-2.0-flash}
+
+    # Portkey fallback catch-all (SCP will route here when needed)
+    - name: portkey/*
+      provider: {reference: portkey}
+
+# =============================================================================
+# MCP GATEWAY
+# Listens on port 3001. Agents connect here for MCP-over-SSE tool access.
+# =============================================================================
+mcp:
+  listeners:
+    - name: mcp-sse
+      port: 3001
+      protocol: HTTP
+
+  servers:
+    # Add your MCP servers below. Examples:
+    - name: filesystem
+      transport:
+        stdio:
+          cmd: ["npx", "-y", "@modelcontextprotocol/server-filesystem", "/data"]
+
+    - name: postgres
+      transport:
+        stdio:
+          cmd: ["npx", "-y", "@modelcontextprotocol/server-postgres"]
+          env:
+            DATABASE_URL: $POSTGRES_URL
+
+    # - name: web-search
+    #   transport:
+    #     sse:
+    #       url: "http://localhost:8888/sse"
+
+# =============================================================================
+# PORT BINDS — ExtAuthz wiring to SCP
+# Both LLM (3000) and MCP (3001) ports call SCP before forwarding.
+# =============================================================================
+binds:
+
+  # ── LLM Gateway (OpenAI-compatible) ─────────────────────────────────────
+  - port: 3000
+    listeners:
+      - name: llm-gateway
+        protocol: HTTP
+        routes:
+          - name: llm-completions
+            matches:
+              - path: {pathPrefix: /v1/chat/completions}
+              - path: {pathPrefix: /v1/completions}
+              - path: {pathPrefix: /v1/embeddings}
+            policies:
+              # SCP ExtAuthz: runs BEFORE forwarding to the LLM provider
+              extAuthz:
+                host: "ai-cost-auditorv2.dl-56e.workers.dev"
+                protocol:
+                  http:
+                    path: "/api/v1/authz/evaluate"
+                    method: POST
+                    headers:
+                      x-api-key: "container-internal"
+                    # Forward agent attribution headers to SCP for policy lookup
+                    forwardHeaders:
+                      - x-agent-id
+                      - x-customer-id
+                      - x-project-id
+                      - x-user-id
+                      - x-episode-id
+                      - x-request-id
+                # Cache auth decisions per agent/customer (5-second TTL)
+                # prevents a round-trip to SCP on every streaming chunk
+                cache:
+                  key:
+                    - request.headers["x-agent-id"]
+                    - request.headers["x-customer-id"]
+                  ttl: "5s"
+                  maxEntries: 4096
+
+              # Mirror post-response telemetry to SCP for async ledger settlement
+              requestMirror:
+                backend:
+                  host: "ai-cost-auditorv2.dl-56e.workers.dev"
+                percentage: 1.0
+
+  # ── MCP Gateway ──────────────────────────────────────────────────────────
+  - port: 3001
+    listeners:
+      - name: mcp-gateway
+        protocol: HTTP
+        routes:
+          - name: mcp-tools
+            matches:
+              - path: {pathPrefix: /mcp/}
+            policies:
+              extAuthz:
+                host: "ai-cost-auditorv2.dl-56e.workers.dev"
+                protocol:
+                  http:
+                    path: "/api/v1/authz/mcp-evaluate"
+                    method: POST
+                    headers:
+                      x-api-key: "container-internal"
+                    forwardHeaders:
+                      - x-agent-id
+                      - x-customer-id
+                      - x-mcp-tool-name
+                      - x-mcp-server-name
+                      - x-episode-id

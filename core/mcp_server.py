@@ -271,7 +271,13 @@ async def run_simulation(audit_id: str, savings_target: float) -> str:
 
 def main():
     """Main entrypoint for MCP server execution."""
-    mcp.run(transport="stdio")
+    transport = os.environ.get("MCP_TRANSPORT", "stdio")
+    if transport == "sse":
+        port = int(os.environ.get("MCP_PORT", "8001"))
+        host = os.environ.get("MCP_HOST", "0.0.0.0")
+        mcp.run(transport="sse", host=host, port=port)
+    else:
+        mcp.run(transport="stdio")
 
 if __name__ == "__main__":
     main()

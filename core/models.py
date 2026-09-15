@@ -112,6 +112,17 @@ class UsageRecord(BaseModel):
     scp_avoided_cost: Optional[Decimal] = Field(default=None, description="Cost avoided by routing to a cheaper model (USD)")
     scp_request_hash: Optional[str] = Field(default=None, description="SHA-256 of request payload for duplicate detection")
 
+    # ---------------------------------------------------------------------------
+    # AgentGateway / MCP — Tool execution tracking
+    # Populated when this record originates from an MCP tool call (not an LLM call).
+    # ---------------------------------------------------------------------------
+    agw_request_id: Optional[str] = Field(default=None, description="AgentGateway request ID (from x-request-id header)")
+    agw_reservation_id: Optional[str] = Field(default=None, description="Budget reservation ID issued by SCP ExtAuthz")
+    mcp_server_name: Optional[str] = Field(default=None, description="MCP server name (e.g. 'postgres', 'filesystem')")
+    mcp_tool_name: Optional[str] = Field(default=None, description="MCP tool name (e.g. 'query_database', 'read_file')")
+    mcp_execution_ms: Optional[float] = Field(default=None, description="MCP tool execution wall-clock time in ms")
+    mcp_tool_cost_usd: Optional[Decimal] = Field(default=None, description="Estimated cost of this MCP tool execution (USD)")
+
     model_config = {"populate_by_name": True, "arbitrary_types_allowed": True}
 
     from pydantic import model_validator
@@ -333,6 +344,85 @@ class CircuitBreakerState(BaseModel):
     last_evaluated: datetime = Field(default_factory=datetime.utcnow)
     reset_requires_approval: bool = True
     approval_id: Optional[str] = None
+
+    model_config = {"arbitrary_types_allowed": True}
+
+
+# ---------------------------------------------------------------------------
+# AgentGateway ExtAuthz — Request / Response contracts
+# These are the exact JSON shapes AgentGateway sends to and expects from SCP.
+# ---------------------------------------------------------------------------
+
+class AuthzRequest(BaseModel):
+    """Pre-request authorization payload sent by AgentGateway for LLM calls."""
+    agent_id: Optional[str] = None
+    customer_id: Optional[str] = None
+    project_id: Optional[str] = None
+    user_id: Optional[str] = None
+    episode_id: Optional[str] = None
+    request_id: Optional[str] = None
+    model: str
+    estimated_input_tokens: int = 0
+    request_hash: Optional[str] = None
+
+    model_config = {"arbitrary_types_allowed": True}
+
+
+class AuthzResponse(BaseModel):
+    """Response from SCP to AgentGateway for LLM pre-request authorization."""
+    status: Literal["allow", "route", "block"]
+    model_override: Optional[str] = None       # Set when status == "route"
+    reservation_id: Optional[str] = None       # Present when status != "block"
+    policy_id: Optional[str] = None
+    triggered_rules: list[str] = Field(default_factory=list)
+    error: Optional[dict[str, Any]] = None     # Present when status == "block"
+
+    model_config = {"arbitrary_types_allowed": True}
+
+
+class MCPAuthzRequest(BaseModel):
+    """Pre-request authorization payload sent by AgentGateway for MCP tool calls."""
+    agent_id: Optional[str] = None
+    customer_id: Optional[str] = None
+    project_id: Optional[str] = None
+    episode_id: Optional[str] = None
+    mcp_server_name: str
+    mcp_tool_name: str
+    request_id: Optional[str] = None
+
+    model_config = {"arbitrary_types_allowed": True}
+
+
+class MCPAuthzResponse(BaseModel):
+    """Response from SCP to AgentGateway for MCP tool pre-request authorization."""
+    status: Literal["allow", "block"]
+    tool_cost_estimate_usd: Optional[str] = None  # Decimal as string for JSON safety
+    reservation_id: Optional[str] = None
+    policy_id: Optional[str] = None
+    error: Optional[dict[str, Any]] = None
+
+    model_config = {"arbitrary_types_allowed": True}
+
+
+class TelemetrySettleRequest(BaseModel):
+    """Post-response telemetry payload sent by AgentGateway after LLM/MCP completion."""
+    reservation_id: str
+    request_id: Optional[str] = None
+    agent_id: Optional[str] = None
+    customer_id: Optional[str] = None
+    project_id: Optional[str] = None
+    episode_id: Optional[str] = None
+    model: Optional[str] = None
+    actual_input_tokens: int = 0
+    actual_output_tokens: int = 0
+    actual_cost_usd: Optional[str] = None      # Decimal as string
+    latency_ms: Optional[float] = None
+    status: Literal["success", "failure", "retry"] = "success"
+    # MCP-specific (present when settling a tool call)
+    mcp_server_name: Optional[str] = None
+    mcp_tool_name: Optional[str] = None
+    mcp_execution_ms: Optional[float] = None
+    mcp_tool_cost_usd: Optional[str] = None
 
     model_config = {"arbitrary_types_allowed": True}
 

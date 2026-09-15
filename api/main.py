@@ -16,6 +16,7 @@ from fastapi.responses import JSONResponse
 from .config import get_settings
 from .routes import audits, findings, scenarios, simulations, pricing_routes
 from .routes import policies, budgets, spend, routing, reports
+from .routes import authz, telemetry
 
 logger = logging.getLogger(__name__)
 
@@ -153,3 +154,7 @@ app.include_router(budgets.router)
 app.include_router(spend.router)
 app.include_router(routing.router)
 app.include_router(reports.router)
+
+# AgentGateway ExtAuthz + Telemetry settlement
+app.include_router(authz.router)
+app.include_router(telemetry.router)

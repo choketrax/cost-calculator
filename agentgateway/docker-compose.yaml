@@ -1,0 +1,19 @@
+﻿services:
+  agentgateway:
+    image: ghcr.io/agentgateway/agentgateway:latest
+    ports:
+      - "3000:3000"    # LLM Gateway  — OpenAI-compatible API
+      - "3001:3001"    # MCP Gateway  — SSE tool access
+      - "15000:15000"  # Admin UI     — http://localhost:15000
+      - "15020:15020"  # Prometheus   — http://localhost:15020/metrics
+    volumes:
+      - ./agentgateway.yaml:/app/config.yaml:ro
+    env_file:
+      - .env
+    command: ["--config", "/app/config.yaml"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:15000/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3

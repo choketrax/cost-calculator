@@ -7,7 +7,6 @@
 
 import { Container, getContainer, ContainerProxy } from "@cloudflare/containers";
 import { controlRouter, SCPEnv } from "./control";
-import { proxyRouter } from "./proxy";
 import { handleScheduled, handleQueue, SCPEvent } from "./alerts";
 export { ContainerProxy };
 export { BudgetDO } from "./budget_do";
@@ -60,21 +59,6 @@ export default {
     // Redirect root to API docs
     if (url.pathname === "/") {
       return Response.redirect(`${url.origin}/api/v1/docs`, 302);
-    }
-
-    // Spend Control Pack — AI API Proxy (owns all financial decisions)
-    if (url.pathname.startsWith("/proxy/v1/")) {
-      const apiKey = request.headers.get("X-API-Key");
-      if (!apiKey || apiKey !== env.API_KEY) {
-        return new Response(JSON.stringify({ error: "Unauthorized" }),
-          { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } });
-      }
-      const response = await proxyRouter.fetch(request, env, ctx);
-      const newResponse = new Response(response.body, response);
-      for (const [key, value] of Object.entries(corsHeaders)) {
-        newResponse.headers.set(key, value);
-      }
-      return newResponse;
     }
 
     // INTERNAL RPC routes for the container to access D1 and R2
