@@ -15,7 +15,7 @@ services:
     runtime: docker
     dockerfilePath: ./agentgateway/Dockerfile
     dockerContext: ./agentgateway
-    plan: starter           # Free tier — upgrade to standard for production
+    plan: free              # Free tier
     region: oregon          # Closest to Cloudflare US-West edge
     branch: main
     healthCheckPath: /healthz
