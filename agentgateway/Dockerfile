@@ -7,4 +7,4 @@ COPY agentgateway.yaml /app/config.yaml
 
 EXPOSE 3000 3001 15000 15020
 
-CMD ["-c", "/app/config.yaml"]
+CMD ["--file=/app/config.yaml"]

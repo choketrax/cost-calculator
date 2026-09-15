@@ -10,7 +10,7 @@ services:
       - ./agentgateway.yaml:/app/config.yaml:ro
     env_file:
       - .env
-    command: ["-c", "/app/config.yaml"]
+    command: ["--file=/app/config.yaml"]
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:15000/healthz"]
