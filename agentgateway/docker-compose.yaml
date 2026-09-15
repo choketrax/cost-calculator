@@ -1,4 +1,4 @@
-﻿services:
+services:
   agentgateway:
     image: ghcr.io/agentgateway/agentgateway:latest
     ports:
@@ -10,7 +10,7 @@
       - ./agentgateway.yaml:/app/config.yaml:ro
     env_file:
       - .env
-    command: ["--config", "/app/config.yaml"]
+    command: ["-c", "/app/config.yaml"]
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:15000/healthz"]
