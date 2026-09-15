@@ -1,4 +1,4 @@
-﻿# yaml-language-server: $schema=https://agentgateway.dev/schema/config
+# yaml-language-server: $schema=https://agentgateway.dev/schema/config
 # AgentGateway configuration for the Spend Control Pack
 # Data Plane: AgentGateway (Rust) handles all LLM routing, MCP sessions, retries, load balancing.
 # Control Plane: AI Cost Auditor / SCP (Cloudflare) provides ExtAuthz, budget enforcement, and the D1 ledger.
@@ -72,23 +72,23 @@ llm:
       params:
         apiKey: $OPENAI_API_KEY
 
-    - name: anthropic
-      provider: anthropic
-      params:
-        apiKey: $ANTHROPIC_API_KEY
+    # - name: anthropic
+    #   provider: anthropic
+    #   params:
+    #     apiKey: $ANTHROPIC_API_KEY
 
-    - name: google
-      provider: googleGemini
-      params:
-        apiKey: $GOOGLE_API_KEY
+    # - name: google
+    #   provider: googleGemini
+    #   params:
+    #     apiKey: $GOOGLE_API_KEY
 
     # Portkey as optional fallback (not a required dependency)
     # SCP routes to this when cost-optimization routing fires
-    - name: portkey
-      provider: openAI                   # Portkey is OpenAI-compatible
-      params:
-        apiKey: $PORTKEY_API_KEY
-        baseURL: "https://api.portkey.ai/v1"
+    # - name: portkey
+    #   provider: openAI                   # Portkey is OpenAI-compatible
+    #   params:
+    #     apiKey: $PORTKEY_API_KEY
+    #     baseURL: "https://api.portkey.ai/v1"
 
   # Models exposed to agents
   models:
@@ -145,12 +145,12 @@ mcp:
         stdio:
           cmd: ["npx", "-y", "@modelcontextprotocol/server-filesystem", "/data"]
 
-    - name: postgres
-      transport:
-        stdio:
-          cmd: ["npx", "-y", "@modelcontextprotocol/server-postgres"]
-          env:
-            DATABASE_URL: $POSTGRES_URL
+    # - name: postgres
+    #   transport:
+    #     stdio:
+    #       cmd: ["npx", "-y", "@modelcontextprotocol/server-postgres"]
+    #       env:
+    #         DATABASE_URL: $POSTGRES_URL
 
     # - name: web-search
     #   transport:
