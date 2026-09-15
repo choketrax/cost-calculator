@@ -1,0 +1,50 @@
+﻿# Render.com infrastructure-as-code
+# Docs: https://render.com/docs/yaml-spec
+#
+# Setup (one-time):
+#   1. Go to https://dashboard.render.com/select-repo
+#   2. Connect the choketrax/Scontrol-pk GitHub repo
+#   3. Render will detect this file and create the service automatically
+#   4. Add your environment variables (API keys) in the Render dashboard
+#
+# After setup, every push to main auto-deploys AgentGateway.
+
+services:
+  - type: web
+    name: agentgateway-scp
+    runtime: docker
+    dockerfilePath: ./agentgateway/Dockerfile
+    dockerContext: ./agentgateway
+    plan: starter           # Free tier — upgrade to standard for production
+    region: oregon          # Closest to Cloudflare US-West edge
+    branch: main
+    healthCheckPath: /healthz
+
+    # Ports AgentGateway exposes
+    # Render only exposes one public port per service (the main HTTP port).
+    # Port 3000 (LLM) is the public port; MCP (3001) and admin (15000)
+    # are internal only. For full multi-port access, upgrade to a private network.
+    port: 3000
+
+    envVars:
+      # ── Required: AgentGateway API key ──────────────────────────────────
+      - key: AGW_API_KEY
+        sync: false          # Set this secret in the Render dashboard
+
+      # ── LLM Provider keys (add only what you use) ────────────────────
+      - key: OPENAI_API_KEY
+        sync: false
+
+      - key: ANTHROPIC_API_KEY
+        sync: false
+
+      - key: GOOGLE_API_KEY
+        sync: false
+
+      # ── Optional: Portkey fallback ───────────────────────────────────
+      - key: PORTKEY_API_KEY
+        sync: false
+
+      # ── Optional: Postgres MCP server ───────────────────────────────
+      - key: POSTGRES_URL
+        sync: false
