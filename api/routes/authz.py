@@ -1,4 +1,4 @@
-﻿"""
+"""
 SCP External Authorization (ExtAuthz) endpoints.
 
 AgentGateway calls these endpoints synchronously before routing each LLM or
@@ -118,12 +118,32 @@ def _default_policy() -> PolicyConfig:
 
 @router.post("/evaluate", response_model=AuthzResponse)
 async def evaluate_llm_authz(body: AuthzRequest, request: Request):
-    repo = request.app.state.repo
+    logger.info("ExtAuthz LLM Evaluation for request %s", request.headers.get("x-agw-request-id"))
+    db = request.app.state.repo
     scope_id = body.agent_id or body.customer_id or body.project_id or "global"
     period = datetime.now(timezone.utc).strftime("%Y-%m")
 
-    policy_row = await _load_active_policy(repo, body.agent_id, body.customer_id, body.project_id)
-    ledger = await _load_ledger(repo, scope_id, period)
+    # 1. Fetch BYOK key from vault if customer_id exists
+    client_key = None
+    if body.customer_id:
+        try:
+            vault_result = await db.execute_raw(
+                "SELECT api_key FROM scp_client_vault WHERE client_id = ? AND provider_name = ?",
+                [body.customer_id, "openai"]
+            )
+            rows = vault_result.get("results", [])
+            if rows:
+                client_key = rows[0].get("api_key")
+                logger.info("Found BYOK key in vault for customer %s", body.customer_id)
+        except Exception as e:
+            logger.warning("Failed to query client vault: %s", e)
+
+    upstream_headers = {}
+    if client_key:
+        upstream_headers["Authorization"] = f"Bearer {client_key}"
+
+    policy_row = await _load_active_policy(db, body.agent_id, body.customer_id, body.project_id)
+    ledger = await _load_ledger(db, scope_id, period)
 
     if policy_row:
         try:
@@ -202,6 +222,7 @@ async def evaluate_llm_authz(body: AuthzRequest, request: Request):
             reservation_id=reservation_id,
             policy_id=policy.policy_id,
             triggered_rules=decision.triggered_rules,
+            upstream_headers=upstream_headers if upstream_headers else None,
         )
 
     return AuthzResponse(
@@ -210,6 +231,7 @@ async def evaluate_llm_authz(body: AuthzRequest, request: Request):
         reservation_id=reservation_id,
         policy_id=policy.policy_id,
         triggered_rules=decision.triggered_rules,
+        upstream_headers=upstream_headers if upstream_headers else None,
     )
 
 

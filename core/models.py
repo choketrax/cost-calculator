@@ -376,6 +376,7 @@ class AuthzResponse(BaseModel):
     policy_id: Optional[str] = None
     triggered_rules: list[str] = Field(default_factory=list)
     error: Optional[dict[str, Any]] = None     # Present when status == "block"
+    upstream_headers: Optional[dict[str, str]] = None
 
     model_config = {"arbitrary_types_allowed": True}
 
