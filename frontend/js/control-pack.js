@@ -519,5 +519,158 @@ export const ControlPack = {
         </div>
       </div>
     `;
+  },
+
+  // -------------------------------------------------------------------------
+  // View 7: Clients & Key Vault (BYOK)
+  // -------------------------------------------------------------------------
+  async fetchVaultClients() {
+    const res = await this.apiCall('/control/v1/vault');
+    return res && res.success ? res.clients : [];
+  },
+
+  async saveVaultKey(clientId, provider, apiKey) {
+    return await this.apiCall('/control/v1/vault', {
+      method: 'POST',
+      body: JSON.stringify({
+        client_id: clientId,
+        provider_name: provider,
+        api_key: apiKey
+      })
+    });
+  },
+
+  async deleteVaultKey(clientId, provider) {
+    return await this.apiCall(`/control/v1/vault/${clientId}/${provider}`, {
+      method: 'DELETE'
+    });
+  },
+
+  async renderClientsVault() {
+    const container = document.getElementById('scp-vault-content');
+    if (!container) return;
+
+    container.innerHTML = `
+      <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+        Loading Client Vault...
+      </div>
+    `;
+
+    const clients = await this.fetchVaultClients();
+
+    const rowsHtml = (clients && clients.length > 0)
+      ? clients.map(c => `
+        <tr>
+          <td><strong style="color: var(--text-primary);">${c.client_id}</strong></td>
+          <td>
+            <span class="scp-badge" style="background: rgba(99, 102, 241, 0.2); color: #818cf8; text-transform: uppercase;">
+              ${c.provider_name}
+            </span>
+          </td>
+          <td><code style="font-family: monospace; font-size: 0.85rem; color: var(--text-secondary);">${c.masked_key}</code></td>
+          <td style="color: var(--text-secondary); font-size: 0.85rem;">${new Date(c.created_at).toLocaleDateString()}</td>
+          <td>
+            <button class="btn secondary delete-vault-btn" data-client="${c.client_id}" data-provider="${c.provider_name}" style="padding: 4px 10px; font-size: 0.8rem; color: #ef4444; border-color: rgba(239,68,68,0.3);">
+              Revoke
+            </button>
+          </td>
+        </tr>
+      `).join('')
+      : `<tr><td colspan="5" class="text-center" style="padding: 24px; color: var(--text-secondary);">No client keys provisioned yet. Add your first BYOK key above.</td></tr>`;
+
+    container.innerHTML = `
+      <div class="card-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px;">
+        <div>
+          <h3>Client Key Vault (BYOK)</h3>
+          <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 4px;">
+            Securely store client-provided LLM credentials. AgentGateway injects these keys dynamically during authorization.
+          </p>
+        </div>
+      </div>
+
+      <!-- Add Key Card -->
+      <div class="card glass-panel" style="margin-bottom: 24px; border: 1px solid rgba(99, 102, 241, 0.3);">
+        <h4 style="margin-bottom: 16px; font-size: 1rem; color: #818cf8;">Add / Update Client Credentials</h4>
+        <form id="vault-add-form" style="display: grid; grid-template-columns: 1fr 1fr 2fr auto; gap: 12px; align-items: end;">
+          <div>
+            <label style="display: block; font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 6px;">Client / Customer ID</label>
+            <input type="text" id="vault-client-id" class="form-control" placeholder="e.g. acme-corp" required style="width: 100%; padding: 8px 12px; border-radius: 6px; background: rgba(0,0,0,0.3); border: 1px solid var(--panel-border); color: #fff;">
+          </div>
+          <div>
+            <label style="display: block; font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 6px;">Provider</label>
+            <select id="vault-provider" class="form-control" style="width: 100%; padding: 8px 12px; border-radius: 6px; background: rgba(0,0,0,0.3); border: 1px solid var(--panel-border); color: #fff;">
+              <option value="openai">OpenAI</option>
+              <option value="anthropic">Anthropic</option>
+              <option value="google">Google Gemini</option>
+            </select>
+          </div>
+          <div>
+            <label style="display: block; font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 6px;">Provider API Key</label>
+            <input type="password" id="vault-api-key" class="form-control" placeholder="sk-proj-..." required style="width: 100%; padding: 8px 12px; border-radius: 6px; background: rgba(0,0,0,0.3); border: 1px solid var(--panel-border); color: #fff;">
+          </div>
+          <button type="submit" class="btn primary" style="background: #6366f1; border-color: #6366f1; height: 38px; padding: 0 20px;">
+            Save Key
+          </button>
+        </form>
+        <div id="vault-form-status" style="margin-top: 10px; font-size: 0.85rem;"></div>
+      </div>
+
+      <!-- Clients List -->
+      <div class="card glass-panel">
+        <div class="card-header">
+          <h4>Active Client Credentials</h4>
+        </div>
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Client ID</th>
+                <th>Provider</th>
+                <th>Masked Key</th>
+                <th>Added / Updated</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+
+    // Hook up Add Key form
+    const form = document.getElementById('vault-add-form');
+    if (form) {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const cId = document.getElementById('vault-client-id').value;
+        const prov = document.getElementById('vault-provider').value;
+        const key = document.getElementById('vault-api-key').value;
+        const statusEl = document.getElementById('vault-form-status');
+
+        statusEl.innerHTML = `<span style="color: var(--accent-color);">Saving to D1 vault...</span>`;
+        const res = await this.saveVaultKey(cId, prov, key);
+        if (res && res.success) {
+          statusEl.innerHTML = `<span style="color: var(--success);">Key saved successfully!</span>`;
+          setTimeout(() => this.renderClientsVault(), 1000);
+        } else {
+          statusEl.innerHTML = `<span style="color: var(--warning);">Failed to save key: ${res?.error || 'Unknown error'}</span>`;
+        }
+      });
+    }
+
+    // Hook up Revoke buttons
+    const deleteBtns = container.querySelectorAll('.delete-vault-btn');
+    deleteBtns.forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const cId = e.currentTarget.getAttribute('data-client');
+        const prov = e.currentTarget.getAttribute('data-provider');
+        if (confirm(`Are you sure you want to revoke the ${prov.toUpperCase()} key for ${cId}?`)) {
+          await this.deleteVaultKey(cId, prov);
+          this.renderClientsVault();
+        }
+      });
+    });
   }
 };

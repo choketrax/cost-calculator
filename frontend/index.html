@@ -104,6 +104,10 @@
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
           Optimizations
         </button>
+        <button class="nav-item" data-view="scp-vault">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          Client Vault
+        </button>
       </nav>
       
       <div class="sidebar-footer">
@@ -362,6 +366,11 @@
           <div id="scp-optimizations-content"></div>
         </section>
 
+        <!-- SCP: Client Vault -->
+        <section id="view-scp-vault" class="view-section hidden">
+          <div id="scp-vault-content"></div>
+        </section>
+
       </div>
     </main>
   </div>
@@ -481,6 +490,7 @@
           else if (view === 'scp-budgets') ControlPack.renderBudgets();
           else if (view === 'scp-alerts') ControlPack.renderAlerts();
           else if (view === 'scp-optimizations') ControlPack.renderOptimizations();
+          else if (view === 'scp-vault') ControlPack.renderClientsVault();
         });
       });
     });

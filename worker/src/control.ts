@@ -316,3 +316,60 @@ controlRouter.post("/ledger", async (c) => {
 
   return c.json({ success: true });
 });
+
+// ---------------------------------------------------------------------------
+// Client Vault (BYOK) Management
+// ---------------------------------------------------------------------------
+controlRouter.get("/vault", async (c) => {
+  const env = c.env;
+  try {
+    const results = await env.DB.prepare(
+      `SELECT client_id, provider_name, created_at, 
+              substr(api_key, 1, 7) || '••••••••' || substr(api_key, -4) as masked_key 
+       FROM scp_client_vault 
+       ORDER BY created_at DESC`
+    ).all();
+    return c.json({ success: true, clients: results.results });
+  } catch (err: any) {
+    return c.json({ success: false, error: err.message }, 500);
+  }
+});
+
+controlRouter.post("/vault", async (c) => {
+  const env = c.env;
+  const body = await c.req.json();
+  const { client_id, provider_name, api_key } = body;
+
+  if (!client_id || !provider_name || !api_key) {
+    return c.json({ success: false, error: "Missing required fields: client_id, provider_name, api_key" }, 400);
+  }
+
+  try {
+    await env.DB.prepare(
+      `INSERT INTO scp_client_vault (client_id, provider_name, api_key, created_at)
+       VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+       ON CONFLICT(client_id, provider_name) DO UPDATE SET 
+         api_key = excluded.api_key,
+         created_at = CURRENT_TIMESTAMP`
+    ).bind(client_id.trim(), provider_name.trim().toLowerCase(), api_key.trim()).run();
+
+    return c.json({ success: true, message: `Vault entry for ${client_id} (${provider_name}) saved successfully.` });
+  } catch (err: any) {
+    return c.json({ success: false, error: err.message }, 500);
+  }
+});
+
+controlRouter.delete("/vault/:client_id/:provider_name", async (c) => {
+  const env = c.env;
+  const { client_id, provider_name } = c.req.param();
+
+  try {
+    await env.DB.prepare(
+      `DELETE FROM scp_client_vault WHERE client_id = ? AND provider_name = ?`
+    ).bind(client_id, provider_name.toLowerCase()).run();
+
+    return c.json({ success: true, message: `Key removed for ${client_id} (${provider_name}).` });
+  } catch (err: any) {
+    return c.json({ success: false, error: err.message }, 500);
+  }
+});
