@@ -38,3 +38,21 @@ CREATE TABLE IF NOT EXISTS simulations (
     created_at TEXT NOT NULL,
     FOREIGN KEY (audit_id) REFERENCES audits(audit_id)
 );
+
+-- CRM for Application Funnel
+CREATE TABLE IF NOT EXISTS funnel_applications (
+    application_id TEXT PRIMARY KEY,
+    token TEXT NOT NULL UNIQUE,
+    email TEXT NOT NULL,
+    domain TEXT,
+    company TEXT,
+    score INTEGER NOT NULL,
+    routing TEXT NOT NULL,
+    reason_codes TEXT,
+    raw_data TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    status TEXT DEFAULT 'application_submitted'
+);
+
+CREATE INDEX IF NOT EXISTS idx_funnel_apps_token ON funnel_applications(token);
+CREATE INDEX IF NOT EXISTS idx_funnel_apps_email ON funnel_applications(email);

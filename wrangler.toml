@@ -4,6 +4,10 @@ main = "worker/src/index.ts"
 compatibility_date = "2026-08-14"
 compatibility_flags = ["nodejs_compat"]
 
+# Workers AI primary inference binding
+[ai]
+binding = "AI"
+
 # Container — builds from local Dockerfile
 [[containers]]
 class_name = "AuditorContainer"
@@ -65,13 +69,70 @@ crons = ["*/5 * * * *"]
 [vars]
 APP_ENV = "production"
 API_KEY = "container-internal"
+AI_GATEWAY_ID = "agent-gateway"
+ROUTING_MODE = "cloudflare_first"
+PREFER_DETERMINISTIC = "true"
+EXTERNAL_LLM_DEFAULT = "false"
+EXTERNAL_FALLBACK_ENABLED = "true"
+EXTERNAL_FALLBACK_REQUIRES_POLICY = "true"
+EXTERNAL_BUDGET_OVERRUN_ACTION = "deny"
+MAX_MODEL_ATTEMPTS = "3"
+LOG_ROUTING_DECISIONS = "true"
+WORKERS_AI_BILLING_MODE = "standard_neurons"
+WORKERS_AI_DAILY_FREE_NEURONS = "10000"
+WEB_TOOLS_ENABLED = "true"
 
 # Secrets (set with: npx wrangler secret put <NAME>)
-# API_KEY           — required, main auth token
-# SLACK_WEBHOOK_URL — optional, Slack alerts for SCP budget notifications
-# EMAIL_FROM        — optional, sender address for email alerts
-# PORTKEY_API_KEY   — optional, Portkey gateway integration key
-# PORTKEY_BASE_URL  — optional, Portkey gateway base URL (e.g. https://api.portkey.ai)
-#                     If not set, proxy forwards directly to provider
-# BUDGET_DO         — bound DO namespace
+# API_KEY             — required, main auth token
+# DEEPSEEK_API_KEY    — required for live DeepSeek Search/Fetch tools
+# SLACK_WEBHOOK_URL   — optional, Slack alerts for SCP budget notifications
+# EMAIL_FROM          — optional, sender address for email alerts
+# PORTKEY_API_KEY     — optional, Portkey gateway integration key
+# PORTKEY_BASE_URL    — optional, Portkey gateway base URL (e.g. https://api.portkey.ai)
+#                       If not set, proxy forwards directly to provider
+# OPENROUTER_API_KEY  — optional, OpenRouter API key for Jev Router integration
+#                       Set with: npx wrangler secret put OPENROUTER_API_KEY
+#                       Enables model: "typesafe/jev-router" for intelligent model selection
+# LOCAL_MODEL_URL     — optional, local/self-hosted model endpoint (e.g. http://localhost:8080/v1)
+#                       Supports MiniMind, NanoJev, vLLM, or any OpenAI-compatible local endpoint
+# BUDGET_DO           — bound DO namespace
 # The Container receives env vars via the AuditorContainer class envVars definition
+
+# ---------------------------------------------------------------------------
+# Offline Vitest / Miniflare environment (prevents remote AI proxy worker crash)
+# ---------------------------------------------------------------------------
+[env.test]
+[env.test.durable_objects]
+bindings = [
+  { name = "AUDITOR_CONTAINER", class_name = "AuditorContainer" },
+  { name = "BUDGET_DO", class_name = "BudgetDO" }
+]
+
+[[env.test.d1_databases]]
+binding = "DB"
+database_name = "ai-cost-auditor-db"
+database_id = "88c7fa1b-abc0-4912-8964-2f7abff74f24"
+
+[[env.test.r2_buckets]]
+binding = "AUDIT_STORAGE"
+bucket_name = "ai-cost-auditor"
+
+[[env.test.queues.producers]]
+binding = "SCP_EVENTS"
+queue = "scp-events"
+
+[env.test.vars]
+APP_ENV = "test"
+API_KEY = "container-internal"
+AI_GATEWAY_ID = "agent-gateway"
+ROUTING_MODE = "cloudflare_first"
+PREFER_DETERMINISTIC = "true"
+EXTERNAL_LLM_DEFAULT = "false"
+EXTERNAL_FALLBACK_ENABLED = "true"
+EXTERNAL_FALLBACK_REQUIRES_POLICY = "true"
+EXTERNAL_BUDGET_OVERRUN_ACTION = "deny"
+MAX_MODEL_ATTEMPTS = "3"
+LOG_ROUTING_DECISIONS = "true"
+WORKERS_AI_BILLING_MODE = "standard_neurons"
+WORKERS_AI_DAILY_FREE_NEURONS = "10000"
+WEB_TOOLS_ENABLED = "true"

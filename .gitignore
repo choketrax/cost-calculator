@@ -49,3 +49,6 @@ worker/dist/
 # Cloudflare
 .wrangler/
 node_modules/
+
+logs.txt
+logs2.txt

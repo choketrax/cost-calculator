@@ -213,9 +213,9 @@ describe('BudgetDO — alarm auto-release', () => {
     expect(resReserve.data.ok).toBe(true);
     
     // Call alarm directly via runInDurableObject
-    await runInDurableObject(stub, async (instance: BudgetDO, state) => {
+    await runInDurableObject(stub as any, async (instance: BudgetDO, state: DurableObjectState) => {
       // Modify expires_at manually for test purpose or pass fake now
-      instance.ctx.storage.sql.exec(`UPDATE reservations SET expires_at = ?`, new Date(Date.now() - 1000).toISOString());
+      state.storage.sql.exec(`UPDATE reservations SET expires_at = ?`, new Date(Date.now() - 1000).toISOString());
       await instance.alarm();
     });
 

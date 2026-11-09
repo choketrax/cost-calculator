@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Book your Fit Call | AI Cost Audit</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0a0e17;
+      --bg-secondary: #0f172a;
+      --bg-card: #141e33;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --accent-glow: rgba(37, 99, 235, 0.35);
+      --emerald: #10b981;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --border: rgba(255, 255, 255, 0.08);
+      --border-bright: rgba(255, 255, 255, 0.16);
+      --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 3rem 1.5rem;
+      background-image: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(37, 99, 235, 0.15), transparent);
+    }
+
+    .container {
+      max-width: 720px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 1rem;
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #34d399;
+      border-radius: 100px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      margin-bottom: 1.5rem;
+    }
+
+    h1 {
+      font-size: clamp(2rem, 4vw, 2.75rem);
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      margin-bottom: 0.75rem;
+    }
+    p.subtitle {
+      color: var(--text-secondary);
+      font-size: 1.1rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2.5rem;
+      text-align: left;
+      box-shadow: 0 20px 40px -15px rgba(0,0,0,0.5);
+      margin-bottom: 2rem;
+    }
+
+    .agenda-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .agenda-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+      margin-bottom: 2rem;
+    }
+    .agenda-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+    }
+    .agenda-list li strong {
+      color: #fff;
+    }
+
+    .cal-box {
+      border: 1px dashed rgba(255, 255, 255, 0.2);
+      background: rgba(0, 0, 0, 0.25);
+      border-radius: 12px;
+      padding: 2.5rem 1.5rem;
+      text-align: center;
+    }
+
+    .btn-book {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 1rem 2rem;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: white;
+      text-decoration: none;
+      font-weight: 700;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      cursor: pointer;
+      box-shadow: 0 4px 14px var(--accent-glow);
+      font-size: 1.05rem;
+      margin-top: 1rem;
+      transition: all 0.2s ease;
+    }
+    .btn-book:hover {
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      transform: translateY(-2px);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="status-badge" id="statusBadge">
+      <span>●</span> <span id="badgeText">Application Qualified</span>
+    </div>
+
+    <h1 id="heading">Your Audit Fit Call is Approved</h1>
+    <p class="subtitle" id="subheading">Reserve your 30-minute Fit and Data Readiness session with our cost engineering lead.</p>
+
+    <div class="card">
+      <div class="agenda-title">
+        <span>📋</span> Call Agenda & Focus Areas
+      </div>
+      <ul class="agenda-list">
+        <li><span>1.</span> <span><strong>Validate Spend Scope:</strong> Confirm addressable monthly AI API & cloud inference volumes.</span></li>
+        <li><span>2.</span> <span><strong>Workflow Selection:</strong> Isolate the single most expensive or high-risk pipeline for audit.</span></li>
+        <li><span>3.</span> <span><strong>Data & Redaction Review:</strong> Confirm invoice and telemetry extraction boundaries.</span></li>
+        <li><span>4.</span> <span><strong>Evaluation Benchmark:</strong> Establish acceptable baseline metrics for model downgrade tests.</span></li>
+        <li><span>5.</span> <span><strong>Engagement Scope:</strong> Select between Standard ($5,000) or Case Study ($3,000) track.</span></li>
+      </ul>
+
+      <div class="cal-box">
+        <div style="font-size: 1.1rem; font-weight: 700; color: #fff; margin-bottom: 0.5rem;">Interactive Scheduling</div>
+        <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">Select a convenient slot on our calendar below:</p>
+        <button class="btn-book" onclick="window.location.href='confirmation.html'">Confirm 30-Min Strategy Slot →</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const routing = urlParams.get('routing');
+    
+    if (routing === 'conditional') {
+      document.getElementById('statusBadge').style.borderColor = 'rgba(245, 158, 11, 0.4)';
+      document.getElementById('statusBadge').style.color = '#fbbf24';
+      document.getElementById('statusBadge').style.background = 'rgba(245, 158, 11, 0.12)';
+      document.getElementById('badgeText').textContent = "Diagnostic Review Required";
+      document.getElementById('heading').textContent = "Application Under Review";
+      document.getElementById('subheading').textContent = "We need to clarify a few infrastructure details before proceeding to a full audit. Let's schedule a brief diagnostic.";
+    }
+  </script>
+</body>
+</html>

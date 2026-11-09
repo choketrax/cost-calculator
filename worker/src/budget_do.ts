@@ -99,8 +99,8 @@ export class BudgetDO extends DurableObject<Env> {
       available = budget_usd - total_reserved - total_settled;
     }
 
-    // 4. Check if available - amount_usd < 0
-    if (budget_usd > 0 && available - amount_usd < 0) {
+    // 4. Check if available - amount_usd < 0 (with 1e-9 epsilon for sub-cent precision)
+    if (budget_usd > 0 && available - amount_usd < -1e-9) {
       return Response.json({
         ok: false,
         reason: 'budget_exceeded',

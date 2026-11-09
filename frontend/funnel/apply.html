@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Application | AI Cost Audit</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0a0e17;
+      --bg-secondary: #0f172a;
+      --bg-card: #141e33;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --accent-glow: rgba(37, 99, 235, 0.35);
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --border: rgba(255, 255, 255, 0.08);
+      --border-bright: rgba(255, 255, 255, 0.16);
+      --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 2rem 1rem;
+      background-image: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(37, 99, 235, 0.15), transparent);
+    }
+
+    .form-container {
+      max-width: 620px;
+      margin: 0 auto;
+      width: 100%;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2.5rem;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Progress bar */
+    .progress-bar-container {
+      margin-bottom: 2rem;
+    }
+    .progress-track {
+      background: rgba(255, 255, 255, 0.08);
+      height: 6px;
+      border-radius: 100px;
+      overflow: hidden;
+      margin-bottom: 0.75rem;
+    }
+    .progress-fill {
+      height: 100%;
+      width: 25%;
+      background: linear-gradient(90deg, #3b82f6, #60a5fa);
+      transition: width 0.3s ease;
+    }
+    .progress-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    h2.form-title {
+      font-size: 1.75rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: #fff;
+      margin-bottom: 0.5rem;
+    }
+    p.form-subtitle {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      margin-bottom: 2rem;
+    }
+
+    .step {
+      display: none;
+    }
+    .step.active {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .step-heading {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+    label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 0.5rem;
+    }
+    input, select, textarea {
+      width: 100%;
+      background: #0b1120;
+      border: 1px solid var(--border-bright);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      color: #fff;
+      font-family: inherit;
+      font-size: 0.95rem;
+      transition: all 0.2s ease;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+    }
+    textarea {
+      resize: vertical;
+    }
+
+    .btn-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-top: 2rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+    }
+    button {
+      padding: 0.85rem 1.75rem;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      box-shadow: 0 4px 14px var(--accent-glow);
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      transform: translateY(-1px);
+    }
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+    }
+    button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    .disclaimer {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 1rem;
+      line-height: 1.5;
+    }
+    .back-to-home {
+      display: block;
+      text-align: center;
+      margin-top: 1.5rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.85rem;
+    }
+    .back-to-home:hover {
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="form-container">
+    <div class="progress-bar-container">
+      <div class="progress-track">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+      <div class="progress-labels">
+        <span>1. Company</span>
+        <span>2. AI Stack</span>
+        <span>3. Spend</span>
+        <span>4. Readiness</span>
+      </div>
+    </div>
+
+    <h2 class="form-title">AI Cost Audit Application</h2>
+    <p class="form-subtitle">Deterministic scoring will route qualified teams straight to calendar booking.</p>
+
+    <form id="applyForm">
+      
+      <!-- STEP 1 -->
+      <div class="step active" id="step1">
+        <div class="step-heading">Step 1 of 4: Company & Contact</div>
+        <div class="form-group">
+          <label>Your Name</label>
+          <input type="text" name="name" placeholder="Sarah Connor" required>
+        </div>
+        <div class="form-group">
+          <label>Work Email</label>
+          <input type="email" name="email" placeholder="sarah@company.com" required>
+        </div>
+        <div class="form-group">
+          <label>Company Name</label>
+          <input type="text" name="company" placeholder="Acme Technologies" required>
+        </div>
+        <div class="form-group">
+          <label>Your Role & Decision Authority</label>
+          <input type="text" name="role" placeholder="CTO / Head of AI / VP Eng" required>
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn-secondary" disabled>Back</button>
+          <button type="button" class="btn-primary" onclick="nextStep(1)">Continue →</button>
+        </div>
+      </div>
+
+      <!-- STEP 2 -->
+      <div class="step" id="step2">
+        <div class="step-heading">Step 2 of 4: AI Architecture & Environment</div>
+        <div class="form-group">
+          <label>Primary Model Providers</label>
+          <input type="text" name="providers" placeholder="OpenAI, Anthropic, AWS Bedrock, etc.">
+        </div>
+        <div class="form-group">
+          <label>Number of Active Production Workflows / Agents</label>
+          <input type="number" name="workflows" min="0" value="5">
+        </div>
+        <div class="form-group">
+          <label>Current Gateways, Routers, or Observability</label>
+          <input type="text" name="gateways" placeholder="None, Langfuse, Helicone, LiteLLM, Portkey...">
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn-secondary" onclick="prevStep(1)">Back</button>
+          <button type="button" class="btn-primary" onclick="nextStep(2)">Continue →</button>
+        </div>
+      </div>
+
+      <!-- STEP 3 -->
+      <div class="step" id="step3">
+        <div class="step-heading">Step 3 of 4: Financial Qualification</div>
+        <div class="form-group">
+          <label>Average Monthly Addressable Spend</label>
+          <select name="monthly_spend">
+            <option value="under_1000">Under $1,000 / mo</option>
+            <option value="1000-2999">$1,000 – $2,999 / mo</option>
+            <option value="3000-9999">$3,000 – $9,999 / mo (Conditional)</option>
+            <option value="10000-19999" selected>$10,000 – $19,999 / mo (Target)</option>
+            <option value="20000-49999">$20,000 – $49,999 / mo (Priority)</option>
+            <option value="50000+">$50,000+ / mo (Enterprise)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Can costs currently be attributed by client / workflow?</label>
+          <select name="can_attribute_cost">
+            <option value="no" selected>No — We only see high-level provider invoices</option>
+            <option value="partial">Partially — Rough estimates or tags</option>
+            <option value="yes">Yes — Fully instrumented</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Have you experienced recent unexpected bills, retry storms, or margin bleed?</label>
+          <select name="recent_incidents">
+            <option value="yes" selected>Yes — Sudden spikes or compounding costs</option>
+            <option value="no">No — Spend is steady</option>
+          </select>
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn-secondary" onclick="prevStep(2)">Back</button>
+          <button type="button" class="btn-primary" onclick="nextStep(3)">Continue →</button>
+        </div>
+      </div>
+
+      <!-- STEP 4 -->
+      <div class="step" id="step4">
+        <div class="step-heading">Step 4 of 4: Operational Readiness</div>
+        <div class="form-group">
+          <label>Is request-level telemetry or logs available for review?</label>
+          <select name="has_telemetry">
+            <option value="yes" selected>Yes — Logs, traces, or DB exports exist</option>
+            <option value="no">No — Need guidance pulling data</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Is your team prepared to implement an evidence-backed recommendation?</label>
+          <select name="ready_to_implement">
+            <option value="yes" selected>Yes — Authority to execute is ready</option>
+            <option value="no">No — Exploring casually</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Describe your most expensive or risky workflow:</label>
+          <textarea name="workflow_description" rows="3" placeholder="e.g. Multi-agent research pipeline that frequently loops on complex queries using Claude 3.5 Sonnet..."></textarea>
+        </div>
+
+        <p class="disclaimer">
+          🔒 By submitting, you consent to our team reviewing your responses. We strictly operate under confidentiality and will never ask for private API keys.
+        </p>
+
+        <div class="btn-row">
+          <button type="button" class="btn-secondary" onclick="prevStep(3)">Back</button>
+          <button type="submit" class="btn-primary" id="submitBtn">Submit Application →</button>
+        </div>
+      </div>
+
+    </form>
+  </div>
+
+  <a href="index.html" class="back-to-home">← Back to Overview</a>
+
+  <script>
+    const steps = document.querySelectorAll('.step');
+    const progressFill = document.getElementById('progressFill');
+    let currentStep = 0;
+
+    function updateProgress(stepIndex) {
+      const percentage = ((stepIndex + 1) / steps.length) * 100;
+      progressFill.style.width = percentage + '%';
+    }
+
+    function showStep(index) {
+      steps.forEach((s, i) => s.classList.toggle('active', i === index));
+      updateProgress(index);
+    }
+
+    function nextStep(stepIndex) {
+      currentStep = stepIndex;
+      showStep(currentStep);
+    }
+
+    function prevStep(stepIndex) {
+      currentStep = stepIndex - 1;
+      showStep(currentStep);
+    }
+
+    document.getElementById('applyForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      const data = Object.fromEntries(fd.entries());
+      
+      const btn = document.getElementById('submitBtn');
+      btn.disabled = true;
+      btn.textContent = "Analyzing & Qualifying...";
+
+      try {
+        const res = await fetch('https://ai-cost-auditorv2.dl-56e.workers.dev/api/funnel/apply', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        const result = await res.json();
+        
+        if (result.success) {
+          if (result.routing === 'qualified' || result.routing === 'conditional') {
+            window.location.href = `calendar.html?token=${result.token}&routing=${result.routing}`;
+          } else {
+            window.location.href = 'nurture.html';
+          }
+        } else {
+          alert('Error submitting application. Please try again.');
+          btn.disabled = false;
+          btn.textContent = "Submit Application →";
+        }
+      } catch (err) {
+        alert('Error submitting application. Please check your connection.');
+        btn.disabled = false;
+        btn.textContent = "Submit Application →";
+      }
+    });
+  </script>
+</body>
+</html>

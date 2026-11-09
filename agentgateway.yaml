@@ -1,0 +1,36 @@
+# yaml-language-server: $schema=https://agentgateway.dev/schema/config
+gateways:
+  # MCP Gateway
+  - port: 3000
+    listeners:
+      - routes:
+          - policies:
+              cors:
+                allowOrigins:
+                  - "*"
+                allowHeaders:
+                  - mcp-protocol-version
+                  - content-type
+                  - cache-control
+                exposeHeaders:
+                  - "Mcp-Session-Id"
+            backends:
+              - mcp:
+                  targets:
+                    - name: ai-cost-auditor
+                      sse:
+                        url: "http://mcp:8001/sse"
+
+  # LLM Gateway
+  - port: 4000
+    listeners:
+      - routes:
+          - backends:
+              - llm:
+                  targets:
+                    - name: openai
+                      provider: openai
+                      # Optionally map API keys if you want agentgateway to hold them,
+                      # or pass them through from the client.
+                    - name: anthropic
+                      provider: anthropic

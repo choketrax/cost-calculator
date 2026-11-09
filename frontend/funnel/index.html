@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Cost Audit | Stop Margin Bleed Before the Next Invoice</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0a0e17;
+      --bg-secondary: #0f172a;
+      --bg-card: #141e33;
+      --bg-card-hover: #192640;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --accent-glow: rgba(37, 99, 235, 0.35);
+      --emerald: #10b981;
+      --emerald-glow: rgba(16, 185, 129, 0.25);
+      --amber: #f59e0b;
+      --rose: #f43f5e;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --border: rgba(255, 255, 255, 0.08);
+      --border-bright: rgba(255, 255, 255, 0.16);
+      --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+      background-image: 
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(37, 99, 235, 0.15), transparent),
+        radial-gradient(circle at 80% 30%, rgba(16, 185, 129, 0.06), transparent 400px);
+    }
+
+    /* Container */
+    .container {
+      max-width: 1040px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+    }
+
+    /* Header Nav */
+    nav {
+      padding: 1.5rem 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-weight: 800;
+      font-size: 1.15rem;
+      letter-spacing: -0.02em;
+      color: #fff;
+      text-decoration: none;
+    }
+    .brand-badge {
+      background: linear-gradient(135deg, #2563eb, #3b82f6);
+      color: white;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .nav-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.55rem 1.25rem;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-bright);
+      color: #fff;
+      font-weight: 600;
+      font-size: 0.875rem;
+      border-radius: 8px;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+    .nav-cta:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    /* Pill qualification */
+    .qual-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      background: rgba(37, 99, 235, 0.1);
+      border: 1px solid rgba(37, 99, 235, 0.3);
+      padding: 0.4rem 1rem;
+      border-radius: 100px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #60a5fa;
+      margin-bottom: 1.5rem;
+    }
+    .qual-pill span.dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #3b82f6;
+      box-shadow: 0 0 10px #3b82f6;
+    }
+
+    /* Hero */
+    .hero {
+      text-align: center;
+      padding: 4.5rem 0 3rem;
+    }
+    .hero h1 {
+      font-size: clamp(2.3rem, 5vw, 3.8rem);
+      line-height: 1.15;
+      font-weight: 800;
+      letter-spacing: -0.035em;
+      margin-bottom: 1.5rem;
+      color: #ffffff;
+    }
+    .hero h1 .highlight {
+      background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 50%, #38bdf8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .hero p.subtitle {
+      font-size: clamp(1.05rem, 2vw, 1.25rem);
+      color: var(--text-secondary);
+      max-width: 780px;
+      margin: 0 auto 2.5rem;
+      line-height: 1.6;
+    }
+
+    /* CTA Button Primary */
+    .cta-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      padding: 1.15rem 2.5rem;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: white;
+      text-decoration: none;
+      font-size: 1.15rem;
+      font-weight: 700;
+      border-radius: 10px;
+      box-shadow: 0 4px 20px var(--accent-glow), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+      transition: all 0.25s ease;
+      cursor: pointer;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+    .cta-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(37, 99, 235, 0.5);
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+    }
+    .cta-subtext {
+      margin-top: 0.85rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    /* Video Container */
+    .vsl-wrapper {
+      max-width: 880px;
+      margin: 3.5rem auto 1rem;
+      border-radius: 16px;
+      padding: 4px;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.02));
+      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7);
+    }
+    .vsl-inner {
+      background: #020617;
+      border-radius: 12px;
+      overflow: hidden;
+      aspect-ratio: 16/9;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .vsl-play-btn {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: rgba(37, 99, 235, 0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 35px var(--accent-glow);
+      cursor: pointer;
+      transition: transform 0.2s ease;
+    }
+    .vsl-play-btn:hover {
+      transform: scale(1.08);
+    }
+    .vsl-play-btn svg {
+      width: 28px;
+      height: 28px;
+      fill: white;
+      margin-left: 3px;
+    }
+    .vsl-caption {
+      margin-top: 1.2rem;
+      font-size: 0.95rem;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    /* Trust / Metric stats row */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.5rem;
+      margin: 4.5rem 0;
+    }
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.75rem 1.5rem;
+      text-align: left;
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.5), transparent);
+    }
+    .stat-number {
+      font-size: 2.25rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: #fff;
+      font-family: var(--font-mono);
+      display: flex;
+      align-items: baseline;
+      gap: 0.25rem;
+    }
+    .stat-number.green { color: var(--emerald); }
+    .stat-number.blue { color: #60a5fa; }
+    .stat-label {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      margin-top: 0.35rem;
+      font-weight: 500;
+    }
+
+    /* Sections */
+    .section-header {
+      text-align: center;
+      max-width: 680px;
+      margin: 0 auto 3rem;
+    }
+    .section-tag {
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.1em;
+      color: #60a5fa;
+      font-weight: 700;
+      margin-bottom: 0.6rem;
+      display: block;
+    }
+    .section-title {
+      font-size: clamp(1.8rem, 3.5vw, 2.4rem);
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      color: #fff;
+      margin-bottom: 0.85rem;
+    }
+    .section-desc {
+      color: var(--text-secondary);
+      font-size: 1.05rem;
+    }
+
+    /* Problem / Margin Bleed Grid */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 5rem;
+    }
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 2rem;
+      transition: all 0.25s ease;
+      position: relative;
+    }
+    .feature-card:hover {
+      border-color: var(--border-bright);
+      background: var(--bg-card-hover);
+      transform: translateY(-3px);
+    }
+    .feature-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+    .icon-red { background: rgba(244, 63, 94, 0.12); color: var(--rose); border: 1px solid rgba(244, 63, 94, 0.25); }
+    .icon-amber { background: rgba(245, 158, 11, 0.12); color: var(--amber); border: 1px solid rgba(245, 158, 11, 0.25); }
+    .icon-blue { background: rgba(37, 99, 235, 0.12); color: #60a5fa; border: 1px solid rgba(37, 99, 235, 0.25); }
+    .icon-green { background: rgba(16, 185, 129, 0.12); color: var(--emerald); border: 1px solid rgba(16, 185, 129, 0.25); }
+
+    .feature-card h3 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 0.6rem;
+    }
+    .feature-card p {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+
+    /* 7-Day Timeline / Method */
+    .timeline-container {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2.5rem;
+      margin-bottom: 5rem;
+    }
+    .timeline-steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1.5rem;
+      position: relative;
+      margin-top: 1.5rem;
+    }
+    .step-item {
+      position: relative;
+    }
+    .step-badge {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #60a5fa;
+      background: rgba(37, 99, 235, 0.15);
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      display: inline-block;
+      margin-bottom: 0.75rem;
+    }
+    .step-item h4 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 0.4rem;
+    }
+    .step-item p {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    /* Fit Comparison: Who it's for vs not for */
+    .fit-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      margin-bottom: 5rem;
+    }
+    @media (max-width: 768px) {
+      .fit-grid { grid-template-columns: 1fr; }
+    }
+    .fit-card {
+      border-radius: 14px;
+      padding: 2.25rem;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+    }
+    .fit-card.for {
+      border-color: rgba(16, 185, 129, 0.3);
+      background: linear-gradient(180deg, rgba(16, 185, 129, 0.05) 0%, var(--bg-card) 100%);
+    }
+    .fit-card.not-for {
+      border-color: rgba(244, 63, 94, 0.3);
+      background: linear-gradient(180deg, rgba(244, 63, 94, 0.05) 0%, var(--bg-card) 100%);
+    }
+    .fit-title {
+      font-size: 1.25rem;
+      font-weight: 800;
+      margin-bottom: 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .fit-title.green { color: #34d399; }
+    .fit-title.red { color: #fb7185; }
+
+    .fit-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .fit-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      font-size: 0.95rem;
+      color: var(--text-secondary);
+    }
+    .fit-icon {
+      font-size: 1.1rem;
+      line-height: 1.2;
+      flex-shrink: 0;
+    }
+
+    /* Deliverables & Pricing Overview */
+    .pricing-card {
+      background: linear-gradient(180deg, rgba(37, 99, 235, 0.08) 0%, var(--bg-card) 100%);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: 16px;
+      padding: 3rem 2.5rem;
+      text-align: center;
+      max-width: 800px;
+      margin: 0 auto 5rem;
+      position: relative;
+    }
+    .pricing-badge {
+      position: absolute;
+      top: -14px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #2563eb;
+      color: #fff;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 0.35rem 1rem;
+      border-radius: 20px;
+    }
+    .pricing-title {
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 0.5rem;
+    }
+    .pricing-price {
+      font-size: 3rem;
+      font-weight: 800;
+      color: #fff;
+      font-family: var(--font-mono);
+      margin-bottom: 1rem;
+    }
+    .pricing-sub {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      max-width: 550px;
+      margin: 0 auto 2rem;
+    }
+    .deliverables-checklist {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+      text-align: left;
+      margin-bottom: 2.5rem;
+    }
+    .deliv-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.95rem;
+      color: var(--text-secondary);
+    }
+
+    /* FAQ */
+    .faq-grid {
+      display: grid;
+      gap: 1.25rem;
+      max-width: 800px;
+      margin: 0 auto 5rem;
+    }
+    .faq-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem 1.75rem;
+      text-align: left;
+    }
+    .faq-item h4 {
+      color: #fff;
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+    .faq-item p {
+      color: var(--text-secondary);
+      font-size: 0.925rem;
+      line-height: 1.6;
+    }
+
+    /* Bottom CTA Box */
+    .bottom-cta-box {
+      text-align: center;
+      padding: 4rem 2rem;
+      background: radial-gradient(circle at 50% 0%, rgba(37, 99, 235, 0.2), transparent 70%), var(--bg-card);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: 20px;
+      margin-bottom: 5rem;
+    }
+    .bottom-cta-box h2 {
+      font-size: clamp(1.8rem, 3.5vw, 2.5rem);
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 1rem;
+    }
+    .bottom-cta-box p {
+      color: var(--text-secondary);
+      max-width: 600px;
+      margin: 0 auto 2rem;
+      font-size: 1.05rem;
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 2.5rem 0 3.5rem;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Nav -->
+  <header>
+    <div class="container">
+      <nav>
+        <a href="index.html" class="brand">
+          <span>AI Cost Auditor</span>
+          <span class="brand-badge">Audit & Control</span>
+        </a>
+        <a href="apply.html" class="nav-cta">Apply for Audit →</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <main class="container">
+    <section class="hero">
+      <div class="qual-pill">
+        <span class="dot"></span>
+        <span>For organizations spending $10,000+/mo on AI APIs & inference</span>
+      </div>
+
+      <h1>Find the AI workflows consuming your margin <span class="highlight">before the next invoice does.</span></h1>
+      
+      <p class="subtitle">
+        In seven days, we attribute where your AI budget actually goes, test whether cheaper models preserve required quality, and deliver the exact controls needed to protect gross margin.
+      </p>
+
+      <div>
+        <a href="apply.html" class="cta-btn">
+          <span>Apply for an AI Cost Audit</span>
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4.167 10h11.666M10.833 5l5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <div class="cta-subtext">Takes 4 minutes • Deterministic qualification • Independent analysis</div>
+      </div>
+
+      <!-- VSL Video Showcase Box -->
+      <div class="vsl-wrapper">
+        <div class="vsl-inner">
+          <div class="vsl-play-btn" onclick="alert('Video briefing placeholder. Proceed to application form to qualify.')">
+            <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+          </div>
+          <div class="vsl-caption">Briefing (6 min): How we isolate runaway prompts, retry loops & unguided routing</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Key Stats / Value Metrics -->
+    <section class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-number green">28–62%</div>
+        <div class="stat-label">Average recoverable API & inference waste identified</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number blue">7 Days</div>
+        <div class="stat-label">From invoice & telemetry intake to finalized audit report</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number">$0</div>
+        <div class="stat-label">Production disruption or credential sharing required</div>
+      </div>
+    </section>
+
+    <!-- The Problem Section -->
+    <section>
+      <div class="section-header">
+        <span class="section-tag">The Vulnerability</span>
+        <h2 class="section-title">Invoices show how much you spent. Not which client or workflow burned it.</h2>
+        <p class="section-desc">Without granular workflow attribution, engineering teams face compound failure modes that destroy unit economics.</p>
+      </div>
+
+      <div class="cards-grid">
+        <div class="feature-card">
+          <div class="feature-icon icon-red">⚠️</div>
+          <h3>Blind Retries & Infinite Loops</h3>
+          <p>Autonomous agents hitting silent edge-cases retry 10x with full token context before failing, turning a $0.02 task into an unexpected $2.00 bill spike.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon icon-amber">📉</div>
+          <h3>Premium Model Overuse</h3>
+          <p>Sending classification, formatting, or simple routing tasks through flagship models (Opus / GPT-4o) when small distilled models perform with 99.4% parity at 90% less cost.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon icon-blue">📦</div>
+          <h3>Context Window Bloat</h3>
+          <p>Accidental injection of redundant conversation history, unused vector embeddings, and repetitive system prompts into every single downstream API call.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- The 7-Day Method -->
+    <section>
+      <div class="section-header">
+        <span class="section-tag">Our Method</span>
+        <h2 class="section-title">The Seven-Day Diagnostic Framework</h2>
+        <p class="section-desc">We follow an evidence-backed procedure that normalizes spend and verifies quality before touching a single line of code.</p>
+      </div>
+
+      <div class="timeline-container">
+        <div class="timeline-steps">
+          <div class="step-item">
+            <span class="step-badge">DAY 1–2</span>
+            <h4>1. Normalize</h4>
+            <p>Ingest redacted invoices, billing exports, and provider logs across OpenAI, Anthropic, Bedrock & Azure.</p>
+          </div>
+          <div class="step-item">
+            <span class="step-badge">DAY 3</span>
+            <h4>2. Attribute</h4>
+            <p>Map spend directly to customer accounts, agent workflows, and internal tasks to reveal true gross margin.</p>
+          </div>
+          <div class="step-item">
+            <span class="step-badge">DAY 4–5</span>
+            <h4>3. Evaluate</h4>
+            <p>Benchmark 20–30 representative outputs against lower-cost models to verify quality preservation.</p>
+          </div>
+          <div class="step-item">
+            <span class="step-badge">DAY 6–7</span>
+            <h4>4. Recommend</h4>
+            <p>Deliver 1 prioritized control policy with proven financial payback and a full monitoring baseline.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Is this for you? Qualification Filter -->
+    <section>
+      <div class="section-header">
+        <span class="section-tag">Qualification Filter</span>
+        <h2 class="section-title">Is This Audit the Right Fit?</h2>
+        <p class="section-desc">We only accept organizations where our audit creates clear, measurable, and outsized financial returns.</p>
+      </div>
+
+      <div class="fit-grid">
+        <div class="fit-card for">
+          <div class="fit-title green">
+            <span>✓</span> Who This is FOR
+          </div>
+          <ul class="fit-list">
+            <li><span class="fit-icon">💰</span> Spending $10,000+/mo on AI APIs, cloud inference, or LLM workloads.</li>
+            <li><span class="fit-icon">⚙️</span> Operating at least 5 active production workflows, agents, or client pipelines.</li>
+            <li><span class="fit-icon">📊</span> Cannot reliably calculate AI cost and gross margin by individual customer.</li>
+            <li><span class="fit-icon">🚨</span> Experiencing bill spikes, retry storms, or unexplainable end-of-month surges.</li>
+            <li><span class="fit-icon">🎯</span> Ready to implement validated routing, caching, or rate controls.</li>
+          </ul>
+        </div>
+
+        <div class="fit-card not-for">
+          <div class="fit-title red">
+            <span>✕</span> Who This is NOT For
+          </div>
+          <ul class="fit-list">
+            <li><span class="fit-icon">⛔</span> Spending under $3,000/mo without rapid upcoming production growth.</li>
+            <li><span class="fit-icon">⛔</span> Operating a single basic chatbot or wrapper using default OpenAI settings.</li>
+            <li><span class="fit-icon">⛔</span> Looking for cheap resale keys or generic public prompt templates.</li>
+            <li><span class="fit-icon">⛔</span> Organizations without a technical lead or invoice access to review data.</li>
+            <li><span class="fit-icon">⛔</span> Teams with no intention or authority to implement recommendations.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Deliverables & Pricing -->
+    <section>
+      <div class="pricing-card">
+        <div class="pricing-badge">Audit Packages</div>
+        <h3 class="pricing-title">Seven-Day Full Cost & Quality Audit</h3>
+        <div class="pricing-price">$5,000</div>
+        <p class="pricing-sub">
+          <strong>$3,000 documented case study rate</strong> available for qualified teams willing to share anonymized performance results.
+        </p>
+
+        <div class="deliverables-checklist">
+          <div class="deliv-item">✓ Cost normalization across all providers</div>
+          <div class="deliv-item">✓ Margin attribution by client & workflow</div>
+          <div class="deliv-item">✓ Comparative quality & reliability evaluations</div>
+          <div class="deliv-item">✓ Single highest-payback control recommendation</div>
+          <div class="deliv-item">✓ Spend baseline & runaway failure boundaries</div>
+          <div class="deliv-item">✓ 30-day post-audit monitoring roadmap</div>
+        </div>
+
+        <a href="apply.html" class="cta-btn" style="width: 100%; max-width: 420px; margin: 0 auto;">
+          <span>Apply to Check Qualification</span>
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4.167 10h11.666M10.833 5l5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section>
+      <div class="section-header">
+        <span class="section-tag">Common Questions</span>
+        <h2 class="section-title">Frequently Asked Questions</h2>
+      </div>
+
+      <div class="faq-grid">
+        <div class="faq-item">
+          <h4>Do you require access to our private API keys or customer data?</h4>
+          <p>Never. We only analyze redacted invoice exports, usage metadata, token telemetry, and client-approved synthetic or scrubbed sample queries for quality evals.</p>
+        </div>
+        <div class="faq-item">
+          <h4>What if we are already using an observability tool like Langfuse or Helicone?</h4>
+          <p>Observability tools collect data, but rarely reconcile it against financial invoices or execute comparative model-quality benchmarks. We use your existing telemetry to build the financial and control model.</p>
+        </div>
+        <div class="faq-item">
+          <h4>What happens after the audit is finished?</h4>
+          <p>You receive the full report with an actionable control specification. If you want our team to implement the gateways, routing policies, and circuit breakers, we offer turnkey Spend Control Pack implementations.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Bottom CTA Bar -->
+    <section class="bottom-cta-box">
+      <h2>Stop the margin bleed before next month's bill</h2>
+      <p>Fill out the 4-minute diagnostic application to calculate your qualification score and unlock scheduling.</p>
+      <a href="apply.html" class="cta-btn">
+        <span>Apply for an AI Cost Audit</span>
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4.167 10h11.666M10.833 5l5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container">
+      <p>© 2026 AI Cost Auditor. Independent cost engineering and quality assurance for production AI workloads.</p>
+    </div>
+  </footer>
+
+</body>
+</html>

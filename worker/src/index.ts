@@ -7,15 +7,31 @@
 
 import { Container, getContainer, ContainerProxy } from "@cloudflare/containers";
 import { controlRouter, SCPEnv } from "./control";
+import { proxyRouter } from "./proxy";
+import { funnelRouter } from "./funnel";
 import { handleScheduled, handleQueue, SCPEvent } from "./alerts";
+import { createAgentGatewayApp, AgentGatewayEnv } from "./gateway";
 export { ContainerProxy };
 export { BudgetDO } from "./budget_do";
+
+const agentGatewayApp = createAgentGatewayApp();
 
 export interface Env extends SCPEnv {
   // SCPEnv already includes: AUDITOR_CONTAINER, DB, AUDIT_STORAGE, API_KEY,
   // APP_ENV, SCP_EVENTS, SLACK_WEBHOOK_URL, EMAIL_FROM, PORTKEY_API_KEY
   BUDGET_DO: DurableObjectNamespace;
   PORTKEY_BASE_URL?: string;
+  // Jev Router / OpenRouter integration
+  OPENROUTER_API_KEY?: string;
+  LOCAL_MODEL_URL?: string;
+  // AgentGateway v2.0 / v3.0 bindings & vars
+  AI?: AgentGatewayEnv["AI"];
+  DEEPSEEK_API_KEY?: string;
+  AI_GATEWAY_ID?: string;
+  ROUTING_MODE?: string;
+  WORKERS_AI_BILLING_MODE?: AgentGatewayEnv["WORKERS_AI_BILLING_MODE"];
+  WORKERS_AI_DAILY_FREE_NEURONS?: string;
+  WEB_TOOLS_ENABLED?: string;
 }
 
 /**
@@ -160,10 +176,10 @@ export default {
       url.pathname === "/api/v1/version" ||
       url.pathname === "/api/v1/docs" ||
       url.pathname === "/api/v1/redoc" ||
-      url.pathname === "/api/v1/openapi.json"
+      url.pathname === "/api/v1/openapi.json" 
     ) {
       try {
-        const container = getContainer(env.AUDITOR_CONTAINER, "production-v4");
+        const container = getContainer(env.AUDITOR_CONTAINER as any, "production-v4");
         const response = await container.fetch(request);
         const newResponse = new Response(response.body, response);
         for (const [key, value] of Object.entries(corsHeaders)) {
@@ -173,6 +189,40 @@ export default {
       } catch (e) {
         return new Response(JSON.stringify({ error: String(e), stack: e instanceof Error ? e.stack : "" }), { status: 500, headers: { "Content-Type": "application/json" } });
       }
+    }
+
+    // --- SCP Funnel Router: /api/funnel/* ---
+    if (url.pathname.startsWith("/api/funnel")) {
+      const rewrittenRequest = new Request(
+        request.url.replace("/api/funnel", ""),
+        request
+      );
+      const response = await funnelRouter.fetch(rewrittenRequest, env, ctx);
+      const newResponse = new Response(response.body, response);
+      for (const [key, value] of Object.entries(corsHeaders)) {
+        newResponse.headers.set(key, value);
+      }
+      return newResponse;
+    }
+
+    // --- AgentGateway v2.0 / v3.0 Neuron-First & DeepSeek Research Endpoints ---
+    if (
+      url.pathname === "/api/v1/inference" ||
+      url.pathname === "/api/v1/tools/web.search" ||
+      url.pathname === "/api/v1/tools/web.fetch" ||
+      url.pathname === "/api/v1/mcp" ||
+      url.pathname === "/api/v1/models" ||
+      url.pathname === "/api/v1/tools" ||
+      url.pathname === "/api/v1/usage" ||
+      url.pathname === "/api/v1/usage/neurons" ||
+      url.pathname === "/api/v1/provider-health"
+    ) {
+      const response = await agentGatewayApp.fetch(request, env, ctx);
+      const newResponse = new Response(response.body, response);
+      for (const [key, value] of Object.entries(corsHeaders)) {
+        newResponse.headers.set(key, value);
+      }
+      return newResponse;
     }
 
     // All other endpoints require API key
@@ -215,12 +265,36 @@ export default {
       );
     }
 
+    // --- SCP Proxy Router: /proxy/v1/* ---
+    if (url.pathname.startsWith("/proxy/v1/")) {
+      const response = await proxyRouter.fetch(request, env, ctx);
+      const newResponse = new Response(response.body, response);
+      for (const [key, value] of Object.entries(corsHeaders)) {
+        newResponse.headers.set(key, value);
+      }
+      return newResponse;
+    }
+
+    // --- SCP Control Router: /control/v1/* ---
+    if (url.pathname.startsWith("/control/v1/")) {
+      // Rewrite path for Hono (strip /control/v1 prefix since controlRouter expects /circuit/*, /budget/*, etc.)
+      const rewrittenUrl = new URL(request.url);
+      rewrittenUrl.pathname = url.pathname.replace("/control/v1", "");
+      const rewrittenRequest = new Request(rewrittenUrl.toString(), request);
+      const response = await controlRouter.fetch(rewrittenRequest, env, ctx);
+      const newResponse = new Response(response.body, response);
+      for (const [key, value] of Object.entries(corsHeaders)) {
+        newResponse.headers.set(key, value);
+      }
+      return newResponse;
+    }
+
     try {
       // Log the request path (no body content)
       console.log(`[${request.method}] ${url.pathname}`);
   
       // Proxy authenticated request to container
-      const container = getContainer(env.AUDITOR_CONTAINER, "production-v4");
+      const container = getContainer(env.AUDITOR_CONTAINER as any, "production-v4");
       const response = await container.fetch(request);
   
       // Inject CORS headers into the response
@@ -243,3 +317,7 @@ export default {
     ctx.waitUntil(handleScheduled(event, env));
   }
 };
+
+
+
+
